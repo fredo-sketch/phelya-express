@@ -96,7 +96,7 @@ export default function Hero() {
             <circle cx="1020" cy="190" r="26" fill="none" stroke="#e57734" strokeOpacity=".5" strokeWidth="3" />
           </svg>
 
-          <div className="mx-auto grid max-w-7xl items-center gap-4 px-4 pb-36 pt-12 sm:px-6 md:min-h-[560px] md:grid-cols-[1.15fr_0.85fr] md:pb-44 md:pt-16">
+          <div className="mx-auto grid max-w-7xl items-center gap-4 px-4 pb-48 pt-12 sm:px-6 md:min-h-[560px] md:grid-cols-[1.15fr_0.85fr] md:pb-60 md:pt-16">
             <div className="relative z-10">
               <motion.span
                 initial={{ y: 14, opacity: 0 }}
