@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "@fontsource-variable/nunito";
+@import "leaflet/dist/leaflet.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Design tokens Phelya Express.
+  Palet dasar: teal #01757A, oranye #E57734, krem #F8EBCF, peach #F6C0A6,
+  abu hangat #B6ACAD, cokelat #3E2922. Variabel semantik di bawah dipakai di seluruh UI.
+*/
+:root {
+  --bg: #fff8f3;
+  --surface: #ffffff;
+  --surface-2: #fdefe7;
+  --soft: #fde4d6;
+  --line: #f1d9cb;
+  --fg: #3e2922;
+  --muted: #7d6a62;
+  --primary: #01757a;
+  --primary-strong: #01565a;
+  --primary-soft: #d9f0f0;
+  --accent: #e57734;
+  --accent-strong: #c9611f;
+  --accent-deep: #9a4511;
+  --accent-soft: #fdddc8;
+  --danger: #c0392b;
+  --danger-soft: #fbe0dc;
+  --ok-soft: #d9f0f0;
+  --shadow: 0 8px 30px -12px rgb(62 41 34 / 0.18);
+}
+
+.dark {
+  --bg: #1c1310;
+  --surface: #2a1c17;
+  --surface-2: #33231d;
+  --soft: #3e2922;
+  --line: #4d372d;
+  --fg: #f8ebcf;
+  --muted: #b6acad;
+  --primary: #3fb4b9;
+  --primary-strong: #6fd0d4;
+  --primary-soft: #12373a;
+  --accent: #ef8a4a;
+  --accent-strong: #f5a06a;
+  --accent-deep: #f6c0a6;
+  --accent-soft: #4a2c1c;
+  --danger: #f07a6c;
+  --danger-soft: #4a211c;
+  --ok-soft: #12373a;
+  --shadow: 0 8px 30px -12px rgb(0 0 0 / 0.55);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface-2);
+  --color-soft: var(--soft);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: var(--shadow);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- animasi dekoratif ---- */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes dash-move {
+  to { stroke-dashoffset: -40; }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes marquee-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.animate-float { animation: float-y 4.5s ease-in-out infinite; }
+.animate-dash { animation: dash-move 1.4s linear infinite; }
+.animate-pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
+.animate-marquee-bar { animation: marquee-bar 1.4s ease-in-out infinite; }
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--soft);
+  border-radius: 10px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+  animation: shimmer 1.4s infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+}
+
+/* Pola titik dekoratif. Dipasang lewat ::before supaya tidak menimpa gradien (background-image) milik elemen. */
+.route-pattern {
+  position: relative;
+}
+.route-pattern::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.14) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* Leaflet: tile gelap saat dark mode */
+.dark .leaflet-tile-pane {
+  filter: invert(0.92) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.7);
+}
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--surface-2);
+}
+.leaflet-div-icon {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
