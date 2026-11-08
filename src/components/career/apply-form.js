@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/toast";
 const MAKS_BYTE = 2 * 1024 * 1024;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ApplyForm({ posisi }) {
+export default function ApplyForm({ posisi, slug }) {
   const { toast } = useToast();
   const fileRef = useRef(null);
   const [f, setF] = useState({ nama: "", email: "", hp: "", kota: "", pesan: "" });
@@ -52,8 +52,23 @@ export default function ApplyForm({ posisi }) {
     setErr(n);
     if (Object.keys(n).length) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1100));
+    const form = new FormData();
+    form.append("slug", slug);
+    Object.entries(f).forEach(([k, v]) => form.append(k, v));
+    form.append("cv", cv);
+    let hasil;
+    try {
+      const res = await fetch("/api/lamaran", { method: "POST", body: form });
+      hasil = await res.json().catch(() => ({}));
+      if (!res.ok) hasil = { ok: false, error: hasil.error ?? "Gagal mengirim lamaran." };
+    } catch {
+      hasil = { ok: false, error: "Tidak dapat terhubung ke server. Periksa koneksi internetmu." };
+    }
     setLoading(false);
+    if (!hasil.ok) {
+      toast({ type: "error", title: "Lamaran belum terkirim", description: hasil.error });
+      return;
+    }
     setSukses(true);
     toast({ type: "success", title: "Lamaran terkirim", description: `Lamaran untuk ${posisi} sudah kami terima.` });
   }

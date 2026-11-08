@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Bell, LogOut, Menu, X } from "lucide-react";
 import Logo from "@/components/ui/logo";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import Mascot from "@/components/ui/mascot";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, inisial } from "@/lib/format";
 
 function cocok(pathname, href, exact) {
@@ -48,11 +49,14 @@ function NavList({ nav, pathname, onNavigate }) {
  */
 export default function DashboardShell({ nav, user, roleLabel, children, bottomNav = false, topAction, sidebarNote }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  function keluar() {
-    router.push("/masuk");
+  async function keluar() {
+    await supabaseBrowser().auth.signOut();
+    // navigasi penuh agar semua data sesi sebelumnya di memori ikut hilang
+    // Muat ulang penuh (bukan router.push) agar cookie sesi & state klien bersih
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/masuk");
   }
 
   const sidebar = (
@@ -108,7 +112,7 @@ export default function DashboardShell({ nav, user, roleLabel, children, bottomN
             <span className="absolute right-2 top-2 size-2.5 rounded-full bg-accent ring-2 ring-bg" aria-hidden />
           </button>
           <div className="flex items-center gap-2.5 rounded-full border border-line bg-surface py-1 pl-1 pr-3">
-            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white dark:text-[#1c1310]">{inisial(user.nama)}</span>
+            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white dark:text-[#1c1310]">{inisial(user.nama || "?")}</span>
             <span className="hidden text-left leading-tight sm:block">
               <span className="block text-sm font-extrabold">{user.nama}</span>
               <span className="block text-[11px] font-bold text-accent-deep">{roleLabel}</span>

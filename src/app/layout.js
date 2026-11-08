@@ -2,6 +2,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { OrderStoreProvider } from "@/components/order-store";
+import SessionGuard from "@/components/session-guard";
 
 export const metadata = {
   title: {
@@ -23,7 +24,10 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen antialiased">
         <ThemeProvider>
           <ToastProvider>
-            <OrderStoreProvider>{children}</OrderStoreProvider>
+            <OrderStoreProvider>
+              <SessionGuard />
+              {children}
+            </OrderStoreProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

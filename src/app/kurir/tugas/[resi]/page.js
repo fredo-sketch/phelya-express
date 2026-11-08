@@ -12,7 +12,6 @@ import { useToast } from "@/components/ui/toast";
 import Timeline from "@/components/tracking/timeline";
 import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { useOrders } from "@/components/order-store";
-import { KURIR_AKTIF_ID } from "@/data/mock";
 import { LAYANAN, kotaById } from "@/lib/tariff";
 import { NEXT_ACTION } from "@/lib/status";
 
@@ -21,7 +20,7 @@ const MAKS = 2 * 1024 * 1024;
 
 export default function DetailTugas({ params }) {
   const { resi } = use(params);
-  const { orders, ubahStatus } = useOrders();
+  const { orders, ubahStatus, uploadBukti } = useOrders();
   const { toast } = useToast();
   const fotoRef = useRef(null);
   const [foto, setFoto] = useState(null);
@@ -31,7 +30,7 @@ export default function DetailTugas({ params }) {
   const [alasanErr, setAlasanErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const o = orders.find((x) => x.resi === resi.toUpperCase() && x.kurirId === KURIR_AKTIF_ID);
+  const o = orders.find((x) => x.resi === resi.toUpperCase());
   if (!o)
     return <EmptyState pose="santai" title="Tugas tidak ditemukan" description="Paket ini bukan tugasmu atau sudah tidak ada." action={<Button href="/kurir">Kembali ke tugas</Button>} />;
 
@@ -58,9 +57,24 @@ export default function DetailTugas({ params }) {
     if (loading || !aksi) return;
     if (butuhFoto && !foto) return setFotoErr("Unggah foto bukti serah terima terlebih dahulu.");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const h = ubahStatus(o.resi, aksi.ke, { lokasi: kotaById(o.penerima.kota)?.nama, deskripsi: butuhFoto ? "Paket diterima. Foto bukti serah terima diunggah." : "Status diperbarui oleh kurir." });
+    let buktiPath;
+    if (butuhFoto) {
+      const up = await uploadBukti(o.resi, foto.file);
+      if (!up.ok) {
+        setLoading(false);
+        setFotoErr(up.error);
+        return;
+      }
+      buktiPath = up.path;
+    }
+    const jemput = aksi.ke === "diambil";
+    const h = await ubahStatus(o.resi, aksi.ke, {
+      lokasi: kotaById(jemput ? o.pengirim.kota : o.penerima.kota)?.nama,
+      deskripsi: butuhFoto ? "Paket diterima. Foto bukti serah terima diunggah." : jemput ? "Kurir menjemput paket dari pengirim." : "Status diperbarui oleh kurir.",
+      buktiPath,
+    });
     setLoading(false);
+    if (butuhFoto && h.ok) hapusFoto();
     toast(h.ok ? { type: "success", title: "Status diperbarui", description: `${o.resi} → ${aksi.label}` } : { type: "error", title: "Gagal memperbarui", description: h.error });
   }
 
@@ -69,8 +83,7 @@ export default function DetailTugas({ params }) {
     if (!alasan) return setAlasanErr("Pilih alasan gagal kirim.");
     setAlasanErr("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const h = ubahStatus(o.resi, "gagal", { lokasi: kotaById(o.penerima.kota)?.nama, alasan });
+    const h = await ubahStatus(o.resi, "gagal", { lokasi: kotaById(o.penerima.kota)?.nama, alasan });
     setLoading(false);
     setGagalOpen(false);
     toast(h.ok ? { type: "info", title: "Dicatat sebagai gagal kirim", description: alasan } : { type: "error", title: "Gagal memperbarui", description: h.error });

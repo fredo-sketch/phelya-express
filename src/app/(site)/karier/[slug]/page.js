@@ -1,25 +1,34 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, CircleDollarSign, MapPin } from "lucide-react";
 import ApplyForm from "@/components/career/apply-form";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/badge";
-import { LOWONGAN, getLowongan } from "@/data/mock";
+import { ambilLowongan } from "@/lib/lowongan";
 import { tanggal } from "@/lib/format";
 
-export function generateStaticParams() {
-  return LOWONGAN.map((l) => ({ slug: l.slug }));
+async function getLowongan(slug) {
+  return (await ambilLowongan()).find((l) => l.slug === slug);
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const l = getLowongan(slug);
+  const l = await getLowongan(slug);
   return { title: l ? l.judul : "Lowongan" };
 }
 
-export default async function DetailLowongan({ params }) {
+export default function DetailLowongan({ params }) {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-6xl px-4 py-10 sm:px-6" role="status">Memuat lowongan...</div>}>
+      <Isi params={params} />
+    </Suspense>
+  );
+}
+
+async function Isi({ params }) {
   const { slug } = await params;
-  const l = getLowongan(slug);
+  const l = await getLowongan(slug);
   if (!l) notFound();
 
   return (
@@ -60,7 +69,7 @@ export default async function DetailLowongan({ params }) {
           <Card className="p-6">
             <h2 className="text-xl font-black">Lamar Sekarang</h2>
             <p className="mb-5 mt-1 text-sm text-muted">Isi data dan unggah CV untuk posisi ini.</p>
-            <ApplyForm posisi={l.judul} />
+            <ApplyForm posisi={l.judul} slug={l.slug} />
           </Card>
         </aside>
       </div>

@@ -10,14 +10,13 @@ import Mascot from "@/components/ui/mascot";
 import { CopyResi } from "@/components/tracking/resi-actions";
 import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { useOrders } from "@/components/order-store";
-import { PELANGGAN_AKTIF, getKurir } from "@/data/mock";
 import { kotaById, LAYANAN } from "@/lib/tariff";
 import { STATUS } from "@/lib/status";
 import { jam } from "@/lib/format";
 
 export default function Ringkasan() {
-  const { orders } = useOrders();
-  const saya = orders.filter((o) => o.ownerId === PELANGGAN_AKTIF.id);
+  const { orders, me, getKurir } = useOrders();
+  const saya = orders.filter((o) => o.ownerId === me.id);
   const hitung = (s) => saya.filter((o) => o.status === s).length;
   const jalan = saya.filter((o) => ["menunggu_kurir", "diambil", "dalam_perjalanan"].includes(o.status));
   const aktif = saya.find((o) => o.status === "dalam_perjalanan") ?? saya.find((o) => o.status === "diambil");
@@ -27,7 +26,7 @@ export default function Ringkasan() {
     <div className="mx-auto max-w-7xl space-y-6">
       <section className="relative overflow-hidden rounded-3xl bg-linear-to-r from-accent-soft to-soft p-6 sm:p-8">
         <Pill tone="amber">● Layanan penjemputan aktif</Pill>
-        <h1 className="mt-3 text-3xl font-black sm:text-4xl">Halo, {PELANGGAN_AKTIF.nama}! 👋</h1>
+        <h1 className="mt-3 text-3xl font-black sm:text-4xl">Halo, {me.nama}! 👋</h1>
         <p className="mt-2 max-w-md text-muted">
           Paketmu sedang meluncur dengan aman dan terpercaya bersama Phelya Express. Ada {jalan.length} paket yang sedang diproses hari ini.
         </p>
@@ -37,7 +36,7 @@ export default function Ringkasan() {
       </section>
 
       <section aria-label="Statistik" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total Pesanan" value={saya.length} unit="Paket" icon={Archive} foot="↗ +12% dari bulan lalu" />
+        <StatCard label="Total Pesanan" value={saya.length} unit="Paket" icon={Archive} />
         <StatCard label="Dalam Perjalanan" value={hitung("dalam_perjalanan") + hitung("diambil")} unit="Paket" icon={Truck} foot="● Perlu dipantau" />
         <StatCard label="Sampai Tujuan" value={hitung("sampai")} unit="Paket" icon={CircleCheck} tone="teal" foot="✓ Tepat waktu" />
         <StatCard label="Dibatalkan" value={hitung("dibatalkan")} unit="Paket" icon={CircleX} tone="red" foot="Batal oleh pengirim" />

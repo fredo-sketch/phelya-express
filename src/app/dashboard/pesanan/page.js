@@ -9,7 +9,6 @@ import Button from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/dashboard/pagination";
 import { useOrders } from "@/components/order-store";
-import { PELANGGAN_AKTIF } from "@/data/mock";
 import { kotaById, LAYANAN } from "@/lib/tariff";
 import { STATUS } from "@/lib/status";
 import { rupiah, tanggal } from "@/lib/format";
@@ -17,13 +16,13 @@ import { rupiah, tanggal } from "@/lib/format";
 const PER = 5;
 
 export default function PesananSaya() {
-  const { orders } = useOrders();
+  const { orders, me } = useOrders();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("semua");
   const [urut, setUrut] = useState("terbaru");
   const [hal, setHal] = useState(1);
 
-  const saya = useMemo(() => orders.filter((o) => o.ownerId === PELANGGAN_AKTIF.id), [orders]);
+  const saya = useMemo(() => orders.filter((o) => o.ownerId === me.id), [orders, me.id]);
   const hasil = useMemo(() => {
     const k = q.trim().toLowerCase();
     return saya

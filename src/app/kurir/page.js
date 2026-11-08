@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Archive, CircleCheck, ClipboardList, Navigation, Phone, Rocket, Store, Truck, MapPin, Package } from "lucide-react";
+import { Archive, CircleCheck, ClipboardList, Phone, Rocket, Store, Truck, MapPin, Package, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge, Pill } from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -10,13 +10,13 @@ import EmptyState from "@/components/ui/empty-state";
 import { CopyResi } from "@/components/tracking/resi-actions";
 import { useOrders } from "@/components/order-store";
 import { useToast } from "@/components/ui/toast";
-import { KURIR_AKTIF_ID, getKurir } from "@/data/mock";
 import { LAYANAN, kotaById } from "@/lib/tariff";
 import { NEXT_ACTION } from "@/lib/status";
 import { cn, jam } from "@/lib/format";
 
 const FILTER = [
   ["semua", "Semua"],
+  ["menunggu_kurir", "Baru"],
   ["diambil", "Siap Jemput"],
   ["dalam_perjalanan", "Sedang Antar"],
   ["sampai", "Selesai"],
@@ -32,24 +32,27 @@ function StatMini({ label, value, unit, icon: Icon, hi }) {
 }
 
 export default function TugasKurir() {
-  const { orders, ubahStatus } = useOrders();
+  const { orders, ubahStatus, kurirSaya: kurir } = useOrders();
   const { toast } = useToast();
-  const kurir = getKurir(KURIR_AKTIF_ID);
   const [filter, setFilter] = useState("semua");
   const [busy, setBusy] = useState(null);
 
-  const tugas = useMemo(() => orders.filter((o) => o.kurirId === KURIR_AKTIF_ID && o.status !== "dibatalkan"), [orders]);
+  const tugas = useMemo(() => orders.filter((o) => o.kurirId === kurir?.id && o.status !== "dibatalkan"), [orders, kurir?.id]);
   const hitung = (s) => tugas.filter((o) => o.status === s).length;
   const tampil = tugas.filter((o) => filter === "semua" || o.status === filter);
   const aktifCount = tugas.filter((o) => o.status !== "sampai").length;
 
-  async function mulaiAntar(o) {
-    if (busy) return;
+  async function jalankan(o) {
+    const aksi = NEXT_ACTION[o.status];
+    if (busy || !aksi) return;
     setBusy(o.resi);
-    await new Promise((r) => setTimeout(r, 600));
-    const h = ubahStatus(o.resi, "dalam_perjalanan", { lokasi: kotaById(o.pengirim.kota)?.nama, deskripsi: "Kurir mulai mengantar paket ke penerima." });
+    const jemput = aksi.ke === "diambil";
+    const h = await ubahStatus(o.resi, aksi.ke, {
+      lokasi: kotaById(jemput ? o.pengirim.kota : o.penerima.kota)?.nama,
+      deskripsi: jemput ? "Kurir menjemput paket dari pengirim." : "Kurir mulai mengantar paket ke penerima.",
+    });
     setBusy(null);
-    toast(h.ok ? { type: "success", title: "Status diperbarui", description: `${o.resi} sedang diantar.` } : { type: "error", title: "Gagal memperbarui", description: h.error });
+    toast(h.ok ? { type: "success", title: "Status diperbarui", description: `${o.resi} → ${aksi.label}` } : { type: "error", title: "Gagal memperbarui", description: h.error });
   }
 
   return (
@@ -57,9 +60,9 @@ export default function TugasKurir() {
       <section className="rounded-3xl bg-linear-to-br from-accent-soft to-soft p-5 sm:p-6">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-extrabold uppercase tracking-wider text-accent-deep">Kurir tangguh Phelya</p>
-          <Pill tone="neutral">{kurir.hub}</Pill>
+          <Pill tone="neutral">{kurir?.hub}</Pill>
         </div>
-        <h1 className="mt-2 text-2xl font-black sm:text-3xl">Semangat Pagi, {kurir.nama.split(" ")[0]}! 🛵</h1>
+        <h1 className="mt-2 text-2xl font-black sm:text-3xl">Semangat Pagi, {(kurir?.nama ?? "Kurir").split(" ")[0]}! 🛵</h1>
         <p className="mt-1 text-muted">Tugas antar hari ini: <b className="text-accent-deep">{aktifCount} paket</b> menanti diantarkan amanah.</p>
       </section>
 
@@ -88,7 +91,7 @@ export default function TugasKurir() {
           {tampil.map((o) => {
             const selesai = o.status === "sampai";
             const aksi = NEXT_ACTION[o.status];
-            const toko = o.status === "diambil";
+            const toko = ["menunggu_kurir", "diambil"].includes(o.status);
             const target = toko ? o.pengirim : o.penerima;
             if (selesai)
               return (
@@ -114,7 +117,6 @@ export default function TugasKurir() {
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={o.status} />
                     <Pill tone="info">{LAYANAN[o.layanan].nama} ({o.barang.berat} kg)</Pill>
-                    <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-accent-deep"><Navigation className="size-3.5" aria-hidden />{(1 + (o.resi.charCodeAt(12) % 9) / 3).toFixed(1)} km lagi</span>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-sm">
                     <span className="text-xs font-bold uppercase text-muted">No. Resi</span>
@@ -126,15 +128,15 @@ export default function TugasKurir() {
                     <div>
                       <p className="text-lg font-extrabold">{target.nama}</p>
                       <p className="text-sm text-muted">{target.alamat}</p>
-                      {o.status === "dalam_perjalanan" && <p className="mt-2 rounded-lg bg-accent-soft/60 px-3 py-2 text-xs font-semibold text-accent-deep">📌 Catatan: titip ke satpam jika tidak ada orang.</p>}
+                      {o.catatan && <p className="mt-2 rounded-lg bg-accent-soft/60 px-3 py-2 text-xs font-semibold text-accent-deep">📌 Catatan: {o.catatan}</p>}
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <a href={`tel:${target.hp}`} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-soft font-bold"><Phone className="size-4" aria-hidden />{toko ? "Hubungi Toko" : "Telepon"}</a>
                     <a href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(target.alamat)}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white dark:text-[#1c1310]"><Navigation className="size-4" aria-hidden />Navigasi</a>
                   </div>
-                  {o.status === "diambil" ? (
-                    <Button size="lg" icon={Rocket} className="mt-3 w-full" loading={busy === o.resi} onClick={() => mulaiAntar(o)}>{aksi?.label}</Button>
+                  {["menunggu_kurir", "diambil"].includes(o.status) ? (
+                    <Button size="lg" icon={Rocket} className="mt-3 w-full" loading={busy === o.resi} onClick={() => jalankan(o)}>{aksi?.label}</Button>
                   ) : (
                     <Button href={`/kurir/tugas/${o.resi}`} size="lg" variant="teal" className="mt-3 w-full">{o.status === "gagal" ? "Lihat & Coba Lagi" : "Konfirmasi Sampai & Serah Terima"}</Button>
                   )}

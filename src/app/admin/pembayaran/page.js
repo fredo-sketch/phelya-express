@@ -19,10 +19,9 @@ export default function Pembayaran() {
   async function konfirmasi(o) {
     if (busy) return;
     setBusy(o.resi);
-    await new Promise((r) => setTimeout(r, 600));
-    konfirmasiBayar(o.resi);
+    const h = await konfirmasiBayar(o.resi);
     setBusy(null);
-    toast({ type: "success", title: "Pembayaran dikonfirmasi", description: o.resi });
+    toast(h.ok ? { type: "success", title: "Pembayaran dikonfirmasi", description: o.resi } : { type: "error", title: "Gagal mengonfirmasi", description: h.error });
   }
 
   return (

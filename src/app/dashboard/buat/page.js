@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, ImagePlus, MapPin, PackageCheck, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -9,37 +9,33 @@ import Button from "@/components/ui/button";
 import MapPickerLoader from "@/components/tracking/map-picker-loader";
 import { useToast } from "@/components/ui/toast";
 import { useOrders } from "@/components/order-store";
-import { PELANGGAN_AKTIF } from "@/data/mock";
-import { KOTA, LAYANAN, hitungOngkir, kotaById } from "@/lib/tariff";
+import { KOTA, LAYANAN, kotaById } from "@/lib/tariff";
+import { useOngkir } from "@/lib/use-ongkir";
 import { cn, rupiah } from "@/lib/format";
 
 const LANGKAH = ["Pengirim", "Penerima", "Detail Barang", "Layanan & Ongkir"];
 const HP_RE = /^(08|\+628)\d{8,11}$/;
 const MAKS_FOTO = 2 * 1024 * 1024;
 
-function noResi(orders) {
-  const n = orders.length + 1;
-  return `PEX26110${String(n).padStart(5, "0")}`.slice(0, 13);
-}
-
 export default function BuatPesanan() {
   const router = useRouter();
   const { toast } = useToast();
-  const { orders, tambahOrder } = useOrders();
+  const { me, tambahOrder } = useOrders();
   const fotoRef = useRef(null);
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState({});
   const [f, setF] = useState({
-    pNama: PELANGGAN_AKTIF.nama, pHp: PELANGGAN_AKTIF.hp, pKota: "semarang", pAlamat: "", pPin: null,
+    pNama: me.nama, pHp: me.hp, pKota: "semarang", pAlamat: "", pPin: null,
     rNama: "", rHp: "", rKota: "jakarta", rAlamat: "", rPin: null,
     isi: "", berat: "1", catatan: "", layanan: "reguler",
   });
   const [foto, setFoto] = useState(null); // { file, url }
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
 
-  const ongkir = useMemo(() => hitungOngkir({ asal: f.pKota, tujuan: f.rKota, berat: f.berat, layanan: f.layanan }), [f.pKota, f.rKota, f.berat, f.layanan]);
+  // Ongkir dihitung server (fungsi database yang sama dengan saat pesanan dibuat)
+  const { hasil: ongkir, semua: semuaOngkir } = useOngkir({ asal: f.pKota, tujuan: f.rKota, berat: f.berat, layanan: f.layanan });
 
   function validasi(s) {
     const n = {};
@@ -60,7 +56,7 @@ export default function BuatPesanan() {
       if (!kg || kg <= 0) n.berat = "Berat harus lebih dari 0 kg.";
       else if (kg > 100) n.berat = "Berat maksimal 100 kg.";
     }
-    if (s === 3 && !ongkir.ok) n.layanan = ongkir.error;
+    if (s === 3 && !ongkir.ok) n.layanan = ongkir.error || "Tunggu perhitungan ongkir selesai.";
     return n;
   }
 
@@ -100,26 +96,18 @@ export default function BuatPesanan() {
     setErr(n);
     if (Object.keys(n).length) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    const resi = noResi(orders);
-    const waktu = new Date().toISOString();
-    tambahOrder({
-      resi,
-      ownerId: PELANGGAN_AKTIF.id,
-      pengirim: { nama: f.pNama, hp: f.pHp, kota: f.pKota, alamat: f.pAlamat },
-      penerima: { nama: f.rNama, hp: f.rHp, kota: f.rKota, alamat: f.rAlamat },
-      barang: { isi: f.isi, berat: Number(f.berat) },
-      layanan: f.layanan,
-      ongkir: ongkir.ongkir,
-      bayar: "menunggu",
-      status: "menunggu_kurir",
-      kurirId: null,
-      dibuat: waktu,
-      estimasi: new Date(Date.now() + 2 * 86400000).toISOString(),
-      timeline: [{ waktu, judul: "Pesanan dibuat", lokasi: kotaById(f.pKota)?.nama ?? "-", deskripsi: "Menunggu kurir ditugaskan untuk penjemputan." }],
+    const h = await tambahOrder({
+      pNama: f.pNama, pHp: f.pHp, pKota: f.pKota, pAlamat: f.pAlamat,
+      rNama: f.rNama, rHp: f.rHp, rKota: f.rKota, rAlamat: f.rAlamat,
+      isi: f.isi, berat: Number(f.berat), catatan: f.catatan, layanan: f.layanan,
     });
-    toast({ type: "success", title: "Pesanan berhasil dibuat", description: `Nomor resi ${resi}.` });
-    router.push(`/dashboard/pesanan/${resi}`);
+    setLoading(false);
+    if (!h.ok) {
+      toast({ type: "error", title: "Gagal membuat pesanan", description: h.error });
+      return;
+    }
+    toast({ type: "success", title: "Pesanan berhasil dibuat", description: `Nomor resi ${h.resi}.` });
+    router.push(`/dashboard/pesanan/${h.resi}`);
   }
 
   const kotaOpsi = KOTA.map((k) => <option key={k.id} value={k.id}>{k.nama}</option>);
@@ -210,7 +198,7 @@ export default function BuatPesanan() {
               <h2 className="text-xl font-black">Pilih Layanan</h2>
               <div className="space-y-3" role="radiogroup" aria-label="Layanan pengiriman">
                 {Object.values(LAYANAN).map((l) => {
-                  const hasil = hitungOngkir({ asal: f.pKota, tujuan: f.rKota, berat: f.berat, layanan: l.id });
+                  const hasil = semuaOngkir?.[l.id] ?? { ok: false, error: "Menghitung ongkir..." };
                   const on = f.layanan === l.id;
                   return (
                     <label key={l.id} className={cn("flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition", on ? "border-accent bg-accent-soft/40" : "border-line hover:border-primary", !hasil.ok && "opacity-60")}>

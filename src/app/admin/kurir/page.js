@@ -3,10 +3,9 @@
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/badge";
 import { useOrders } from "@/components/order-store";
-import { KURIR } from "@/data/mock";
 
 export default function KurirAdmin() {
-  const { orders } = useOrders();
+  const { orders, kurir: KURIR } = useOrders();
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <div>

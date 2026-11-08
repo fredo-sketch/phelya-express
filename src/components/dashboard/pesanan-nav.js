@@ -4,8 +4,7 @@ import { LayoutDashboard, PackagePlus, Search, Truck, User } from "lucide-react"
 import Link from "next/link";
 import DashboardShell from "@/components/dashboard/shell";
 import Button from "@/components/ui/button";
-import { useOrders } from "@/components/order-store";
-import { PELANGGAN_AKTIF } from "@/data/mock";
+import { DataGate, useOrders } from "@/components/order-store";
 
 const NAV = [
   { href: "/dashboard", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard, exact: true },
@@ -14,14 +13,12 @@ const NAV = [
   { href: "/dashboard/profil", label: "Profil", short: "Profil", icon: User },
 ];
 
-/** Shell pelanggan; badge jumlah pesanan mengikuti data store. */
+/** Shell pelanggan; badge jumlah pesanan mengikuti data dari server. */
 export default function PelangganShell({ children }) {
-  const user = PELANGGAN_AKTIF;
-  const roleLabel = PELANGGAN_AKTIF.tier;
-  const nav = NAV;
-  const { orders } = useOrders();
-  const n = orders.filter((o) => o.ownerId === PELANGGAN_AKTIF.id).length;
-  const navDenganBadge = nav.map((x) => (x.href === "/dashboard/pesanan" ? { ...x, badge: n } : x));
+  const { orders, me } = useOrders();
+  const user = { nama: me?.nama ?? "" };
+  const roleLabel = me ? `Pelanggan ${me.tier}` : "Memuat...";
+  const navDenganBadge = NAV.map((x) => (x.href === "/dashboard/pesanan" && me ? { ...x, badge: orders.length } : x));
   return (
     <DashboardShell
       nav={navDenganBadge}
@@ -40,7 +37,7 @@ export default function PelangganShell({ children }) {
         </div>
       }
     >
-      {children}
+      <DataGate>{children}</DataGate>
     </DashboardShell>
   );
 }

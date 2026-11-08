@@ -8,20 +8,20 @@ import { Pill } from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import EmptyState from "@/components/ui/empty-state";
-import { KATEGORI_LOWONGAN, LOWONGAN } from "@/data/mock";
+import { KATEGORI_LOWONGAN } from "@/lib/lowongan-data";
 import { tanggal, cn } from "@/lib/format";
 
 const PER_HALAMAN = 4;
 
-export default function JobList() {
+export default function JobList({ lowongan }) {
   const [q, setQ] = useState("");
   const [kat, setKat] = useState("Semua Posisi");
   const [hal, setHal] = useState(1);
 
   const hasil = useMemo(
     () =>
-      LOWONGAN.filter((l) => (kat === "Semua Posisi" || l.kategori === kat) && `${l.judul} ${l.lokasi}`.toLowerCase().includes(q.toLowerCase())),
-    [q, kat],
+      lowongan.filter((l) => (kat === "Semua Posisi" || l.kategori === kat) && `${l.judul} ${l.lokasi}`.toLowerCase().includes(q.toLowerCase())),
+    [q, kat, lowongan],
   );
   const total = Math.max(1, Math.ceil(hasil.length / PER_HALAMAN));
   const aktif = Math.min(hal, total);
@@ -43,7 +43,7 @@ export default function JobList() {
 
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter kategori">
         {KATEGORI_LOWONGAN.map((k) => {
-          const n = k === "Semua Posisi" ? LOWONGAN.length : LOWONGAN.filter((l) => l.kategori === k).length;
+          const n = k === "Semua Posisi" ? lowongan.length : lowongan.filter((l) => l.kategori === k).length;
           return (
             <button key={k} onClick={() => { setKat(k); setHal(1); }} aria-pressed={kat === k} className={cn("rounded-full px-4 py-2 text-sm font-bold transition", kat === k ? "bg-accent-deep text-white" : "bg-soft text-fg hover:bg-accent-soft")}>
               {k} <span className="opacity-70">({n})</span>

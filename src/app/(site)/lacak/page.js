@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import ResiForm from "@/components/tracking/resi-form";
@@ -5,19 +6,27 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import Button from "@/components/ui/button";
-import { getOrder } from "@/data/mock";
+import { ambilLacak } from "@/lib/lacak";
 import { kotaById } from "@/lib/tariff";
 
 export const metadata = { title: "Lacak Paket" };
 
-export default async function LacakPage({ searchParams }) {
+export default function LacakPage({ searchParams }) {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" role="status"><h1 className="text-3xl font-black md:text-4xl">Lacak Paket</h1><p className="mt-2 text-muted">Memuat...</p></div>}>
+      <Isi searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function Isi({ searchParams }) {
   const sp = await searchParams;
   const daftar = (sp?.resi ?? "")
     .split(",")
     .map((r) => r.trim())
     .filter(Boolean)
     .slice(0, 5);
-  const hasil = daftar.map((r) => ({ resi: r, order: getOrder(r) }));
+  const hasil = await Promise.all(daftar.map(async (r) => ({ resi: r, order: await ambilLacak(r) })));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">

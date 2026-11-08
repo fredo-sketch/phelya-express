@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Eye, EyeOff, Lock, LogIn, Mail, Phone, User, UserPlus } from "lucide-react";
 import Button from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
@@ -10,8 +9,30 @@ import Mascot from "@/components/ui/mascot";
 import Logo from "@/components/ui/logo";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import { useToast } from "@/components/ui/toast";
-import { AKUN_UJI } from "@/data/mock";
+import { AKUN_UJI } from "@/data/akun-uji";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn } from "@/lib/format";
+
+const HOME = { pelanggan: "/dashboard", kurir: "/kurir", admin: "/admin" };
+
+/** Terjemahan pesan galat Supabase Auth ke bahasa Indonesia. */
+function pesanAuth(error) {
+  const m = (error?.message ?? "").toLowerCase();
+  if (m.includes("invalid login")) return "Email atau kata sandi salah. Periksa kembali lalu coba lagi.";
+  if (m.includes("not confirmed")) return "Email belum dikonfirmasi. Cek kotak masuk emailmu.";
+  if (m.includes("already registered") || m.includes("already been registered")) return "Email ini sudah terdaftar. Silakan masuk.";
+  if (m.includes("rate limit") || error?.status === 429) return "Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.";
+  if (m.includes("password") && (m.includes("weak") || m.includes("pwned") || m.includes("compromised"))) return "Kata sandi terlalu lemah atau pernah bocor. Gunakan kata sandi lain.";
+  if (m.includes("fetch") || m.includes("network")) return "Tidak dapat terhubung ke server. Periksa koneksi internetmu.";
+  return "Terjadi kesalahan. Coba lagi beberapa saat lagi.";
+}
+
+/** Tujuan setelah login: halaman `next` bila aman (path internal), selain itu beranda sesuai peran. */
+function tujuanSetelahLogin(role) {
+  const next = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
+  const aman = next && next.startsWith("/") && !next.startsWith("//");
+  return aman ? next : (HOME[role] ?? "/dashboard");
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,7 +67,6 @@ function PasswordInput({ value, onChange, invalid, ...p }) {
 }
 
 function LoginForm({ onSwitch }) {
-  const router = useRouter();
   const { toast } = useToast();
   const [f, setF] = useState({ email: "", password: "", ingat: true });
   const [err, setErr] = useState({});
@@ -65,15 +85,28 @@ function LoginForm({ onSwitch }) {
     if (Object.keys(next).length) return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900)); // simulasi request
-    const akun = AKUN_UJI.find((a) => a.email === f.email.trim().toLowerCase() && a.password === f.password);
-    if (!akun) {
+    const supabase = supabaseBrowser();
+    const { error } = await supabase.auth.signInWithPassword({ email: f.email.trim().toLowerCase(), password: f.password });
+    if (error) {
       setLoading(false);
-      setBanner("Email atau kata sandi salah. Periksa kembali lalu coba lagi.");
+      setBanner(pesanAuth(error));
       return;
     }
-    toast({ type: "success", title: `Selamat datang, ${akun.nama.split(" ")[0]}!`, description: `Masuk sebagai ${akun.role}.` });
-    router.push(akun.rute);
+    try {
+      // "Ingat saya": bila tidak dicentang, sesi berakhir saat tab/browser ditutup (lihat SessionGuard)
+      localStorage.setItem("phelya-ingat", f.ingat ? "1" : "0");
+      sessionStorage.setItem("phelya-aktif", "1");
+    } catch {}
+    const me = await fetch("/api/me", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    if (!me?.ok) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setBanner("Akun ini belum memiliki profil. Hubungi admin.");
+      return;
+    }
+    toast({ type: "success", title: `Selamat datang, ${me.me.nama.split(" ")[0]}!`, description: `Masuk sebagai ${me.me.role}.` });
+    // navigasi penuh agar data sesi sebelumnya di memori tidak terbawa
+    window.location.assign(tujuanSetelahLogin(me.me.role));
   }
 
   return (
@@ -133,7 +166,6 @@ function LoginForm({ onSwitch }) {
 }
 
 function RegisterForm({ onSwitch }) {
-  const router = useRouter();
   const { toast } = useToast();
   const [f, setF] = useState({ nama: "", email: "", hp: "", password: "", konfirmasi: "", setuju: false });
   const [err, setErr] = useState({});
@@ -155,9 +187,35 @@ function RegisterForm({ onSwitch }) {
     if (Object.keys(n).length) return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    const supabase = supabaseBrowser();
+    const { data, error } = await supabase.auth.signUp({
+      email: f.email.trim().toLowerCase(),
+      password: f.password,
+      options: { data: { nama: f.nama.trim(), hp: f.hp.replace(/[\s-]/g, "") } },
+    });
+    setLoading(false);
+    if (error) {
+      setErr({ email: pesanAuth(error) });
+      return;
+    }
+    // Supabase tidak membocorkan apakah email sudah terdaftar bila konfirmasi email aktif: identities kosong
+    if (data.user && data.user.identities?.length === 0) {
+      setErr({ email: "Email ini sudah terdaftar. Silakan masuk." });
+      return;
+    }
+    if (!data.session) {
+      toast({ type: "success", title: "Cek emailmu", description: "Kami mengirim tautan konfirmasi. Setelah dikonfirmasi, silakan masuk." });
+      onSwitch();
+      return;
+    }
+    try {
+      localStorage.setItem("phelya-ingat", "1");
+      sessionStorage.setItem("phelya-aktif", "1");
+    } catch {}
     toast({ type: "success", title: "Akun berhasil dibuat", description: "Selamat datang di Phelya Express!" });
-    router.push("/dashboard");
+    // Muat ulang penuh (bukan router.push) agar cookie sesi & state klien bersih
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/dashboard");
   }
 
   return (
