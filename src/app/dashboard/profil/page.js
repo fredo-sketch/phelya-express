@@ -7,11 +7,12 @@ import { Field, Input } from "@/components/ui/field";
 import Button from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { NotifButton } from "@/components/tracking/resi-actions";
-import { PELANGGAN_AKTIF } from "@/data/mock";
+import { useOrders } from "@/components/order-store";
 
 export default function Profil() {
   const { toast } = useToast();
-  const [f, setF] = useState({ nama: PELANGGAN_AKTIF.nama, hp: PELANGGAN_AKTIF.hp });
+  const { me, ubahProfil } = useOrders();
+  const [f, setF] = useState({ nama: me.nama, hp: me.hp });
   const [err, setErr] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -24,9 +25,10 @@ export default function Profil() {
     setErr(n);
     if (Object.keys(n).length) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
+    const h = await ubahProfil({ nama: f.nama.trim(), hp: f.hp.replace(/[\s-]/g, "") });
     setLoading(false);
-    toast({ type: "success", title: "Profil disimpan" });
+    if (h.ok) toast({ type: "success", title: "Profil disimpan" });
+    else toast({ type: "error", title: "Gagal menyimpan profil", description: h.error });
   }
 
   return (
@@ -35,7 +37,7 @@ export default function Profil() {
       <Card className="p-6">
         <form onSubmit={simpan} noValidate className="space-y-4">
           <Field label="Nama lengkap" required error={err.nama}>{(p) => <Input {...p} icon={UserRound} value={f.nama} invalid={!!err.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} />}</Field>
-          <Field label="Email" hint="Email tidak dapat diubah."> {(p) => <Input {...p} icon={Mail} value={PELANGGAN_AKTIF.email} disabled />}</Field>
+          <Field label="Email" hint="Email tidak dapat diubah."> {(p) => <Input {...p} icon={Mail} value={me.email} disabled />}</Field>
           <Field label="Nomor HP" required error={err.hp}>{(p) => <Input {...p} icon={Phone} type="tel" value={f.hp} invalid={!!err.hp} onChange={(e) => setF({ ...f, hp: e.target.value })} />}</Field>
           <Button type="submit" loading={loading}>Simpan Perubahan</Button>
         </form>

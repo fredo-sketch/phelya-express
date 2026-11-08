@@ -3,7 +3,7 @@ import JobList from "@/components/career/job-list";
 import { Card, SectionHeading } from "@/components/ui/card";
 import Mascot from "@/components/ui/mascot";
 import Button from "@/components/ui/button";
-import { LOWONGAN } from "@/data/mock";
+import { ambilLowongan } from "@/lib/lowongan";
 
 export const metadata = { title: "Karier" };
 
@@ -14,7 +14,8 @@ const BENEFIT = [
   { icon: CircleDollarSign, judul: "Bonus Kinerja & Insentif Kompetitif", teks: "Penghargaan produktivitas pengantaran paket, bonus ketepatan SLA, serta subsidi bahan bakar dan servis kendaraan.", tag: "Reward Transparan" },
 ];
 
-export default function KarierPage() {
+export default async function KarierPage() {
+  const lowongan = await ambilLowongan();
   return (
     <>
       <section className="route-pattern bg-linear-to-b from-accent-soft/50 to-bg">
@@ -35,7 +36,7 @@ export default function KarierPage() {
             <Mascot pose="semangat" height={300} float priority className="relative" />
             <div className="absolute right-0 top-0 flex items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 shadow-card ring-1 ring-line">
               <Briefcase className="size-5 text-accent-deep" aria-hidden />
-              <div><p className="text-sm font-black leading-none">{LOWONGAN.length}+ Posisi Aktif</p><p className="mt-0.5 text-[10px] font-bold uppercase text-muted">Di berbagai kota</p></div>
+              <div><p className="text-sm font-black leading-none">{lowongan.length} Posisi Aktif</p><p className="mt-0.5 text-[10px] font-bold uppercase text-muted">Di berbagai kota</p></div>
             </div>
           </div>
         </div>
@@ -55,7 +56,7 @@ export default function KarierPage() {
         </div>
       </section>
 
-      <JobList />
+      <JobList lowongan={lowongan} />
     </>
   );
 }

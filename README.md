@@ -35,14 +35,14 @@ Kirim, lacak, antar, dan kelola paket dalam satu platform dengan tarif transpara
 
 | Lapisan | Status | Keterangan |
 |---|---|---|
-| Frontend (UI semua halaman, light/dark mode) | Selesai | Berjalan dengan data dummy di memori browser |
+| Frontend (UI semua halaman, light/dark mode) | Selesai | Semua halaman memakai data nyata dari Supabase |
 | Database Supabase (skema, constraint, RLS, Storage, fungsi bisnis, seed) | Selesai | Ada di `supabase/`, sudah diuji |
-| Menyambungkan frontend ke Supabase (Auth + API) | Belum | Tahap berikutnya |
+| Menyambungkan frontend ke Supabase (Auth + API) | Selesai | Login sungguhan, rute dilindungi per peran, semua data lewat `/api/*` |
 | Notifikasi (lonceng in-app + Web Push + worker) | Belum | Tabel dan antreannya sudah siap di database |
 | Label resi PDF dengan QR | Belum | |
 | Deploy online (Vercel + worker) | Belum | |
 
-> Saat ini halaman dashboard masih memakai `order-store` (state di memori) dan belum diproteksi login sungguhan. Itu sengaja, karena tahap frontend dikerjakan lebih dulu. Semua aturan bisnis yang penting sudah dipindahkan ke database, jadi saat frontend disambungkan, validasi tidak bergantung pada browser.
+> Browser hanya berbicara dengan Supabase Auth untuk masuk dan keluar. Semua data dibaca dan ditulis lewat Route Handlers `/api/*` yang memakai sesi pengguna, sehingga RLS tetap berlaku. Aturan bisnis (ongkir, nomor resi, transisi status, hak akses) tetap dijalankan di database; server hanya memetakan galat ke pesan yang ramah.
 
 ## Gambaran umum
 
@@ -303,15 +303,21 @@ phelya-express/
 │  │  ├─ tracking/           peta, linimasa, form resi
 │  │  ├─ career/             daftar lowongan dan form lamaran
 │  │  ├─ sections/ layout/ auth/
-│  │  └─ order-store.js      store dummy di memori (akan diganti Supabase)
+│  │  ├─ order-store.js      store klien: memuat /api/bootstrap, aksi tulis lewat /api/*
+│  │  └─ session-guard.js    mengakhiri sesi bila "Ingat saya" tidak dicentang
+│  ├─ app/api/               Route Handlers: bootstrap, me, orders, tarif, zona, pelanggan, lamaran, lowongan
+│  ├─ proxy.js               menyegarkan sesi dan melindungi /dashboard, /kurir, /admin per peran
 │  ├─ lib/
 │  │  ├─ status.js           aturan status (cermin dari database)
 │  │  ├─ tariff.js           ongkir (cermin dari hitung_ongkir)
+│  │  ├─ supabase/           client browser dan server (sesi cookie, client anon)
+│  │  ├─ api/                guard (peran, galat) dan pemeta data ke bentuk UI
+│  │  ├─ lacak.js            pelacakan publik via RPC lacak_resi
 │  │  ├─ route.js            jalur peta dummy
 │  │  └─ format.js           format rupiah dan tanggal
-│  └─ data/mock.js           data dummy
+│  └─ data/akun-uji.js       akun uji untuk tombol "Isi otomatis" di halaman masuk
 └─ supabase/
-   ├─ migrations/            001 skema, 002 fungsi dan trigger, 003 RLS dan Storage, 004 pemisahan policy admin
+   ├─ migrations/            001 skema, 002 fungsi dan trigger, 003 RLS dan Storage, 004 pemisahan policy admin, 005 integrasi frontend (HP saat daftar, penyamaran data pelacakan, lamaran tanpa service_role)
    └─ seed.sql               data dummy dan akun uji
 ```
 
@@ -328,18 +334,18 @@ npm run build
 
 **Database (project Supabase baru)**
 
-1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 004), lewat SQL Editor atau `supabase db push`.
+1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 005), lewat SQL Editor atau `supabase db push`.
 2. Jalankan `supabase/seed.sql` untuk data dummy dan akun uji.
 3. Nonaktifkan registrasi yang tidak perlu dan aktifkan **Leaked Password Protection** di Authentication.
 
-**Variabel lingkungan (rencana, dipakai setelah frontend tersambung)**
+**Variabel lingkungan** (salin `.env.example` menjadi `.env.local`)
 
 | Variabel | Dipakai oleh | Catatan |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | frontend, server | |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | frontend, server | kunci publik |
-| `SUPABASE_SERVICE_ROLE_KEY` | server dan worker saja | **Rahasia.** Jangan pernah dikirim ke browser atau dimasukkan ke repo |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push | pasangan kunci dibuat dengan `npx web-push generate-vapid-keys` |
+| `NEXT_PUBLIC_SUPABASE_URL` | browser, server | |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser, server | kunci publik (aman di browser, dibatasi RLS) |
+| `SUPABASE_SERVICE_ROLE_KEY` | hanya worker notifikasi nanti | **Rahasia.** Aplikasi web tidak memerlukannya. Jangan masukkan ke browser atau repo |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push (tahap berikutnya) | dibuat dengan `npx web-push generate-vapid-keys` |
 
 ## Akun uji
 
@@ -359,8 +365,8 @@ Resi contoh: `PEX2610310001` (dalam perjalanan), `PEX2610309887` (sampai), `PEX2
 
 - [x] Frontend lengkap: tiga dashboard, pelacakan dengan peta, karier, light dan dark mode, bahasa Indonesia
 - [x] Database: skema, constraint, trigger status, RLS, Storage privat, fungsi bisnis, seed, pengujian
-- [ ] Sambungkan frontend ke Supabase: Auth, proteksi rute per peran, ganti `order-store` dengan panggilan server
-- [ ] Unggah foto bukti dan CV ke Storage lewat server
+- [x] Sambungkan frontend ke Supabase: Auth, proteksi rute per peran, `order-store` memakai API server
+- [x] Unggah foto bukti dan CV ke Storage lewat server (cek tipe berkas asli dan ukuran maksimal 2 MB)
 - [ ] Notifikasi: lonceng in-app, Web Push, dan worker pengirim
 - [ ] Label resi PDF dengan QR
 - [ ] Deploy online (Vercel untuk aplikasi, Railway atau Render untuk worker)

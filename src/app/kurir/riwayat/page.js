@@ -5,12 +5,11 @@ import { StatusBadge } from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import Button from "@/components/ui/button";
 import { useOrders } from "@/components/order-store";
-import { KURIR_AKTIF_ID } from "@/data/mock";
 import { tanggalJam } from "@/lib/format";
 
 export default function Riwayat() {
-  const { orders } = useOrders();
-  const selesai = orders.filter((o) => o.kurirId === KURIR_AKTIF_ID && ["sampai", "gagal"].includes(o.status));
+  const { orders, kurirSaya } = useOrders();
+  const selesai = orders.filter((o) => o.kurirId === kurirSaya?.id && ["sampai", "gagal"].includes(o.status));
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="text-3xl font-black">Riwayat</h1>

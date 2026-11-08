@@ -12,14 +12,13 @@ import Timeline from "@/components/tracking/timeline";
 import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { CopyResi } from "@/components/tracking/resi-actions";
 import { useOrders } from "@/components/order-store";
-import { getKurir } from "@/data/mock";
 import { kotaById, LAYANAN } from "@/lib/tariff";
 import { bisaDibatalkan } from "@/lib/status";
 import { rupiah, tanggalJam } from "@/lib/format";
 
 export default function DetailPesanan({ params }) {
   const { resi } = use(params);
-  const { orders, batalkan } = useOrders();
+  const { orders, batalkan, getKurir } = useOrders();
   const { toast } = useToast();
   const [konfirmasi, setKonfirmasi] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,8 +32,7 @@ export default function DetailPesanan({ params }) {
   async function proses() {
     if (loading) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const hasil = batalkan(o.resi);
+    const hasil = await batalkan(o.resi);
     setLoading(false);
     setKonfirmasi(false);
     if (hasil.ok) toast({ type: "success", title: "Pesanan dibatalkan", description: `${o.resi} berhasil dibatalkan.` });

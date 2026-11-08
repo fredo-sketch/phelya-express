@@ -30,7 +30,7 @@ export function bisaDibatalkan(status) {
 }
 
 export const NEXT_ACTION = {
-  menunggu_kurir: null,
+  menunggu_kurir: { ke: "diambil", label: "Ambil Paket" },
   diambil: { ke: "dalam_perjalanan", label: "Mulai Antar" },
   dalam_perjalanan: { ke: "sampai", label: "Konfirmasi Sampai & Serah Terima" },
   gagal: { ke: "dalam_perjalanan", label: "Coba Antar Lagi" },

@@ -1,24 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
 import Button from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { ZONA } from "@/lib/tariff";
+import { api } from "@/components/order-store";
 import { rupiah } from "@/lib/format";
 
 const KOSONG = { id: null, nama: "", maxKm: "", perKg: "" };
 
 export default function TarifZona() {
   const { toast } = useToast();
-  const [zona, setZona] = useState(() => ZONA.map((z) => ({ ...z, maxKm: z.maxKm === Infinity ? "" : z.maxKm })));
+  const [zona, setZona] = useState([]);
+  const [memuat, setMemuat] = useState(true);
+  const [galatMuat, setGalatMuat] = useState("");
+
+  const ambil = useCallback(async () => {
+    const j = await api("/api/tarif");
+    if (j.ok) {
+      setZona(j.zona.map((z) => ({ ...z, maxKm: z.maxKm ?? "" })));
+      setGalatMuat("");
+    } else setGalatMuat(j.error);
+    setMemuat(false);
+  }, []);
+  const muat = ambil;
+  useEffect(() => {
+    let batal = false;
+    api("/api/tarif").then((j) => {
+      if (batal) return;
+      if (j.ok) setZona(j.zona.map((z) => ({ ...z, maxKm: z.maxKm ?? "" })));
+      else setGalatMuat(j.error);
+      setMemuat(false);
+    });
+    return () => {
+      batal = true;
+    };
+  }, []);
   const [modal, setModal] = useState(null);
   const [err, setErr] = useState({});
   const [busy, setBusy] = useState(false);
 
-  function simpan(e) {
+  async function simpan(e) {
     e.preventDefault();
     if (busy) return;
     const n = {};
@@ -30,12 +54,13 @@ export default function TarifZona() {
     setErr(n);
     if (Object.keys(n).length) return;
     setBusy(true);
-    setTimeout(() => {
-      setZona((p) => (modal.id ? p.map((z) => (z.id === modal.id ? { ...z, nama: modal.nama.trim(), maxKm: km ?? "", perKg: harga } : z)) : [...p, { id: Math.max(0, ...p.map((z) => z.id)) + 1, nama: modal.nama.trim(), maxKm: km ?? "", perKg: harga }]));
-      setBusy(false);
-      setModal(null);
-      toast({ type: "success", title: modal.id ? "Zona diperbarui" : "Zona ditambahkan" });
-    }, 600);
+    const badan = { nama: modal.nama.trim(), maxKm: km, perKg: harga };
+    const j = modal.id ? await api(`/api/zona/${modal.id}`, { method: "PATCH", body: badan }) : await api("/api/zona", { method: "POST", body: badan });
+    setBusy(false);
+    if (!j.ok) return toast({ type: "error", title: "Zona belum tersimpan", description: j.error });
+    setModal(null);
+    await muat();
+    toast({ type: "success", title: modal.id ? "Zona diperbarui" : "Zona ditambahkan" });
   }
 
   return (
@@ -48,12 +73,14 @@ export default function TarifZona() {
         <Button icon={Plus} onClick={() => { setErr({}); setModal({ ...KOSONG }); }}>Tambah Zona</Button>
       </div>
 
-      <p className="rounded-xl bg-accent-soft/50 px-4 py-3 text-sm text-accent-deep">Perubahan di halaman ini masih simulasi dan belum memengaruhi perhitungan ongkir. Setelah terhubung ke database, tarif ini menjadi sumber perhitungan.</p>
+      <p className="rounded-xl bg-accent-soft/50 px-4 py-3 text-sm text-accent-deep">Tarif di halaman ini langsung dipakai untuk menghitung ongkir pada pesanan baru.</p>
+      {galatMuat && <p role="alert" className="rounded-xl bg-danger-soft px-4 py-3 text-sm font-semibold text-danger">{galatMuat}</p>}
 
       <Card className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="bg-surface2 text-xs uppercase tracking-wider text-muted"><tr>{["Zona", "Jarak Maks.", "Tarif / kg", ""].map((h) => <th key={h} scope="col" className="px-5 py-3.5">{h}</th>)}</tr></thead>
           <tbody>
+            {memuat && <tr><td colSpan={4} className="px-5 py-6 text-center text-muted">Memuat tarif...</td></tr>}
             {zona.map((z) => (
               <tr key={z.id} className="border-t border-line">
                 <td className="px-5 py-4 font-bold">{z.nama}</td>

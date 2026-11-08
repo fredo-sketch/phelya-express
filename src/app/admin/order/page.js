@@ -10,7 +10,6 @@ import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/dashboard/pagination";
 import OrderDrawer from "@/components/dashboard/order-drawer";
 import { useOrders } from "@/components/order-store";
-import { KURIR, getKurir } from "@/data/mock";
 import { LAYANAN, kotaById } from "@/lib/tariff";
 import { STATUS } from "@/lib/status";
 import { tanggalJam } from "@/lib/format";
@@ -19,7 +18,7 @@ const PER = 6;
 const AWAL = { q: "", status: "semua", kurir: "semua", layanan: "semua" };
 
 export default function OrderTracking() {
-  const { orders } = useOrders();
+  const { orders, kurir: daftarKurir, getKurir } = useOrders();
   const [flt, setFlt] = useState(AWAL);
   const [hal, setHal] = useState(1);
   const [buka, setBuka] = useState(null);
@@ -72,7 +71,7 @@ export default function OrderTracking() {
         <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
           <div><label className="mb-1.5 block text-xs font-bold text-muted" htmlFor="f-q">Cari Resi / Nama / Kota</label><Input id="f-q" icon={Search} value={flt.q} onChange={set("q")} placeholder="Contoh: PEX26…, Dewi, Surabaya" /></div>
           <div><label className="mb-1.5 block text-xs font-bold text-muted" htmlFor="f-s">Status</label><Select id="f-s" value={flt.status} onChange={set("status")}><option value="semua">Semua Status</option>{Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Select></div>
-          <div><label className="mb-1.5 block text-xs font-bold text-muted" htmlFor="f-k">Kurir</label><Select id="f-k" value={flt.kurir} onChange={set("kurir")}><option value="semua">Semua Kurir</option><option value="none">Belum ditugaskan</option>{KURIR.map((k) => <option key={k.id} value={k.id}>{k.nama}</option>)}</Select></div>
+          <div><label className="mb-1.5 block text-xs font-bold text-muted" htmlFor="f-k">Kurir</label><Select id="f-k" value={flt.kurir} onChange={set("kurir")}><option value="semua">Semua Kurir</option><option value="none">Belum ditugaskan</option>{daftarKurir.map((k) => <option key={k.id} value={k.id}>{k.nama}</option>)}</Select></div>
           <div><label className="mb-1.5 block text-xs font-bold text-muted" htmlFor="f-l">Layanan</label><Select id="f-l" value={flt.layanan} onChange={set("layanan")}><option value="semua">Semua Layanan</option>{Object.values(LAYANAN).map((l) => <option key={l.id} value={l.id}>{l.nama}</option>)}</Select></div>
           <Button variant="secondary" icon={RotateCcw} className="self-end" onClick={() => { setFlt(AWAL); setHal(1); }}>Reset</Button>
         </div>

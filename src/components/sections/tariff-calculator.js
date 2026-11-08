@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Calculator, MapPin, Route, Timer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
 import Button from "@/components/ui/button";
 import Mascot from "@/components/ui/mascot";
-import { KOTA, LAYANAN, hitungOngkir } from "@/lib/tariff";
+import { KOTA, LAYANAN } from "@/lib/tariff";
+import { useOngkir } from "@/lib/use-ongkir";
 import { rupiah } from "@/lib/format";
 
 export default function TariffCalculator({ initial }) {
@@ -16,7 +17,7 @@ export default function TariffCalculator({ initial }) {
     berat: initial.berat ?? "1",
     layanan: initial.layanan ?? "reguler",
   });
-  const hasil = useMemo(() => hitungOngkir(f), [f]);
+  const { hasil } = useOngkir(f);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   return (
@@ -40,6 +41,8 @@ export default function TariffCalculator({ initial }) {
             <p className="mt-3 font-extrabold">Kota asal dan tujuan sama</p>
             <p className="text-sm text-muted">Pilih kota tujuan yang berbeda untuk melihat tarif.</p>
           </div>
+        ) : hasil.loading ? (
+          <div role="status" className="py-10 text-center text-sm font-bold text-muted">Menghitung ongkos kirim...</div>
         ) : !hasil.ok ? (
           <div role="alert" className="py-6 text-center">
             <Mascot pose="hormat" height={120} className="mx-auto" />

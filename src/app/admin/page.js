@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { CircleCheck, Hourglass, Package, Truck, Wallet } from "lucide-react";
 import StatCard from "@/components/dashboard/stat-card";
 import { LineChart, Donut } from "@/components/dashboard/charts";
@@ -10,10 +11,25 @@ import { useOrders } from "@/components/order-store";
 import { kotaById } from "@/lib/tariff";
 import { rupiah, tanggalJam } from "@/lib/format";
 
-const PERIODE = { labels: ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"], order: [42, 55, 49, 71, 64, 88, 60] };
+/** Jumlah order per hari untuk 7 hari terakhir (zona waktu WIB), dihitung dari data asli. */
+function tujuhHari(orders) {
+  const kunci = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" });
+  const nama = new Intl.DateTimeFormat("id-ID", { weekday: "short", timeZone: "Asia/Jakarta" });
+  const hari = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000);
+    return { key: kunci.format(d), label: nama.format(d) };
+  });
+  const jumlah = Object.fromEntries(hari.map((h) => [h.key, 0]));
+  orders.forEach((o) => {
+    const k = kunci.format(new Date(o.dibuat));
+    if (k in jumlah) jumlah[k] += 1;
+  });
+  return { labels: hari.map((h) => h.label), order: hari.map((h) => jumlah[h.key]) };
+}
 
 export default function AdminDashboard() {
   const { orders } = useOrders();
+  const periode = useMemo(() => tujuhHari(orders), [orders]);
   const hitung = (s) => orders.filter((o) => o.status === s).length;
   const pendapatan = orders.filter((o) => o.bayar === "lunas").reduce((a, o) => a + o.ongkir, 0);
 
@@ -46,8 +62,8 @@ export default function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Card className="p-5 sm:p-6">
           <h2 className="text-lg font-black">Order per Hari (7 hari terakhir)</h2>
-          <p className="mb-3 text-sm text-muted">Data simulasi.</p>
-          <LineChart data={PERIODE.order} labels={PERIODE.labels} />
+          <p className="mb-3 text-sm text-muted">Jumlah pesanan yang dibuat per hari.</p>
+          <LineChart data={periode.order} labels={periode.labels} />
         </Card>
         <Card className="p-5 sm:p-6">
           <h2 className="mb-4 text-lg font-black">Distribusi Status</h2>

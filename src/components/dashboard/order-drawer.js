@@ -9,13 +9,12 @@ import Timeline from "@/components/tracking/timeline";
 import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { useToast } from "@/components/ui/toast";
 import { useOrders } from "@/components/order-store";
-import { KURIR, getKurir } from "@/data/mock";
 import { LAYANAN, kotaById } from "@/lib/tariff";
 import { rupiah } from "@/lib/format";
 
 /** Drawer rincian order untuk admin: timeline, peta, assign kurir, konfirmasi pembayaran. */
 export default function OrderDrawer({ resi, onClose }) {
-  const { orders, assignKurir, konfirmasiBayar } = useOrders();
+  const { orders, kurir: daftarKurir, getKurir, assignKurir, konfirmasiBayar } = useOrders();
   const { toast } = useToast();
   const [pilih, setPilih] = useState("");
   const [err, setErr] = useState("");
@@ -37,9 +36,9 @@ export default function OrderDrawer({ resi, onClose }) {
     if (!pilih) return setErr("Pilih kurir terlebih dahulu.");
     setErr("");
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 600));
-    assignKurir(o.resi, pilih);
+    const h = await assignKurir(o.resi, pilih);
     setBusy(false);
+    if (!h.ok) return toast({ type: "error", title: "Gagal menugaskan kurir", description: h.error });
     setPilih("");
     toast({ type: "success", title: "Kurir ditugaskan", description: `${o.resi} → ${getKurir(pilih)?.nama}` });
   }
@@ -47,10 +46,9 @@ export default function OrderDrawer({ resi, onClose }) {
   async function bayar() {
     if (busy) return;
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 600));
-    konfirmasiBayar(o.resi);
+    const h = await konfirmasiBayar(o.resi);
     setBusy(false);
-    toast({ type: "success", title: "Pembayaran dikonfirmasi", description: o.resi });
+    toast(h.ok ? { type: "success", title: "Pembayaran dikonfirmasi", description: o.resi } : { type: "error", title: "Gagal mengonfirmasi", description: h.error });
   }
 
   return (
@@ -88,7 +86,7 @@ export default function OrderDrawer({ resi, onClose }) {
                 {(p) => (
                   <Select {...p} value={pilih} invalid={!!err} onChange={(e) => setPilih(e.target.value)} aria-label="Pilih kurir">
                     <option value="">Pilih kurir</option>
-                    {KURIR.filter((k) => k.aktif).map((k) => <option key={k.id} value={k.id}>{k.nama} · {k.hub}</option>)}
+                    {daftarKurir.filter((k) => k.aktif).map((k) => <option key={k.id} value={k.id}>{k.nama} · {k.hub}</option>)}
                   </Select>
                 )}
               </Field>

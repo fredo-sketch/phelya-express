@@ -6,8 +6,7 @@ import Timeline from "@/components/tracking/timeline";
 import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { CopyResi, NotifButton, ShareButton } from "@/components/tracking/resi-actions";
 import { kotaById, LAYANAN } from "@/lib/tariff";
-import { getKurir } from "@/data/mock";
-import { samarkanHp, samarkanNama, tanggal, tanggalJam } from "@/lib/format";
+import { tanggal, tanggalJam } from "@/lib/format";
 
 function Info({ icon: Icon, label, children }) {
   return (
@@ -24,7 +23,7 @@ function Info({ icon: Icon, label, children }) {
 export default function TrackingView({ order }) {
   const asal = kotaById(order.pengirim.kota);
   const tujuan = kotaById(order.penerima.kota);
-  const kurir = getKurir(order.kurirId);
+  const kurir = order.kurir;
   const svc = LAYANAN[order.layanan];
   const selesai = order.status === "sampai";
 
@@ -59,7 +58,7 @@ export default function TrackingView({ order }) {
             <Info icon={Package} label="Layanan">{svc.nama.replace("Phelya ", "")}</Info>
             <Info icon={Scale} label="Berat">{order.barang.berat} kg</Info>
             <Info icon={CalendarClock} label={selesai ? "Tiba" : "Estimasi tiba"}>{selesai ? tanggal(order.timeline[0].waktu) : tanggal(order.estimasi)}</Info>
-            <Info icon={ShieldCheck} label="Pengirim">{samarkanNama(order.pengirim.nama)}</Info>
+            <Info icon={ShieldCheck} label="Pengirim">{order.pengirim.nama}</Info>
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
@@ -86,11 +85,11 @@ export default function TrackingView({ order }) {
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted">Penerima</dt>
-              <dd className="text-right font-bold">{samarkanNama(order.penerima.nama)}</dd>
+              <dd className="text-right font-bold">{order.penerima.nama}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted">No. HP</dt>
-              <dd className="font-mono font-bold">{samarkanHp(order.penerima.hp)}</dd>
+              <dd className="font-mono font-bold">{order.penerima.hp}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted">Dikirim</dt>
@@ -113,7 +112,7 @@ export default function TrackingView({ order }) {
               <div>
                 <p className="font-extrabold">Paket diterima</p>
                 <p className="text-sm text-muted">Diterima oleh {order.diterimaOleh ?? "penerima"}.</p>
-                <p className="mt-1 text-xs text-muted">Foto bukti asli tampil di sini setelah fitur unggah terhubung ke storage.</p>
+                <p className="mt-1 text-xs text-muted">Foto bukti hanya dapat dilihat oleh pengirim dan penerima yang masuk ke akun.</p>
               </div>
             </div>
           </Card>
