@@ -2,7 +2,7 @@
 
 import { use, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Camera, CircleAlert, MapPin, Phone, X } from "lucide-react";
+import { ArrowLeft, Camera, CircleAlert, MapPin, Phone, Printer, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -98,6 +98,7 @@ export default function DetailTugas({ params }) {
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-muted">No. Resi</p>
             <h1 className="font-mono text-2xl font-black">{o.resi}</h1>
+            <Link href={`/api/orders/${o.resi}/label`} target="_blank" rel="noopener" prefetch={false} className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-primary underline"><Printer className="size-4" aria-hidden />Lihat label resi</Link>
           </div>
           <StatusBadge status={o.status} className="text-sm" />
         </div>

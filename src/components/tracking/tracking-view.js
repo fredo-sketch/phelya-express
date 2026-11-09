@@ -62,7 +62,7 @@ export default function TrackingView({ order }) {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-            <NotifButton />
+            <NotifButton resi={order.resi} />
             <ShareButton resi={order.resi} />
           </div>
         </Card>

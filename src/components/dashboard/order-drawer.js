@@ -101,7 +101,7 @@ export default function OrderDrawer({ resi, onClose }) {
         </div>
 
         <div className="flex gap-3 border-t border-line p-4">
-          <Button variant="secondary" icon={Printer} className="flex-1" onClick={() => toast({ type: "info", title: "Cetak label", description: "Label PDF + QR dibuat di tahap backend." })}>Cetak Resi</Button>
+          <Button variant="secondary" icon={Printer} className="flex-1" href={`/api/orders/${o.resi}/label`} target="_blank" rel="noopener" prefetch={false}>Cetak Label</Button>
           {o.bayar !== "lunas" ? (
             <Button icon={Wallet} className="flex-1" loading={busy} onClick={bayar}>Konfirmasi Bayar</Button>
           ) : (

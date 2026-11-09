@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Ban, Package, Wallet } from "lucide-react";
+import { ArrowLeft, Ban, Package, Printer, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge, BayarBadge } from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -53,6 +53,7 @@ export default function DetailPesanan({ params }) {
               <h1 className="font-mono text-2xl font-black">{o.resi}</h1>
               <CopyResi resi={o.resi} />
             </div>
+            <Button variant="soft" size="sm" icon={Printer} className="mt-3" href={`/api/orders/${o.resi}/label`} target="_blank" rel="noopener" prefetch={false}>Cetak Label</Button>
             <p className="mt-1 text-sm text-muted">Dibuat {tanggalJam(o.dibuat)}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

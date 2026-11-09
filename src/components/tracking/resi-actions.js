@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { BellRing, BellOff, Copy, Share2, Check } from "lucide-react";
 import Button from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { aktifkanPush, matikanPush, pushDidukung, sudahBerlangganan } from "@/lib/push";
 
 export function CopyResi({ resi }) {
   const { toast } = useToast();
@@ -46,38 +47,48 @@ export function ShareButton({ resi }) {
 }
 
 /**
- * Tombol izin notifikasi. Izin hanya diminta saat tombol diklik (interaksi pengguna).
- * Menangani: browser tidak mendukung, izin ditolak, dan izin sudah diberikan.
- * Pendaftaran Service Worker + subscription VAPID dikerjakan di tahap backend.
+ * Tombol notifikasi push. Izin hanya diminta saat tombol diklik.
+ * Tanpa `resi` = langganan akun (profil/lonceng); dengan `resi` = langganan tamu untuk satu paket.
  */
-export function NotifButton() {
+export function NotifButton({ resi } = {}) {
   const { toast } = useToast();
-  // Izin notifikasi dibaca langsung dari browser. `override` menyimpan hasil terbaru setelah diminta.
+  // Status awal dibaca dari browser; `override` menyimpan hasil terbaru setelah aksi.
   const awal = useSyncExternalStore(
     () => () => {},
-    () => {
-      if (!("Notification" in window) || !("serviceWorker" in navigator)) return "tidak_didukung";
-      return Notification.permission;
-    },
+    () => (pushDidukung() ? Notification.permission : "tidak_didukung"),
     () => "memuat",
   );
   const [override, setOverride] = useState(null);
+  const [aktif, setAktif] = useState(null);
   const state = override ?? awal;
-  const setState = setOverride;
+
+  useEffect(() => {
+    let batal = false;
+    sudahBerlangganan().then((v) => !batal && setAktif(v));
+    return () => {
+      batal = true;
+    };
+  }, []);
 
   async function aktifkan() {
-    setState("meminta");
-    try {
-      const hasil = await Notification.requestPermission();
-      setState(hasil);
-      if (hasil === "granted") {
-        toast({ type: "success", title: "Notifikasi aktif", description: "Kamu akan diberi tahu saat status paket berubah." });
-      } else if (hasil === "denied") {
-        toast({ type: "error", title: "Izin notifikasi ditolak", description: "Aktifkan lewat pengaturan situs di browser kamu." });
-      }
-    } catch {
-      setState("default");
+    setOverride("meminta");
+    const j = await aktifkanPush({ resi });
+    if (j.ok) {
+      setOverride("granted");
+      setAktif(true);
+      toast({ type: "success", title: "Notifikasi aktif", description: resi ? "Kamu akan diberi tahu saat status paket ini berubah." : "Kamu akan diberi tahu saat ada pembaruan." });
+    } else {
+      setOverride(j.izin === "denied" ? "denied" : Notification.permission);
+      toast({ type: "error", title: "Notifikasi belum aktif", description: j.error });
     }
+  }
+
+  async function matikan() {
+    setOverride("meminta");
+    await matikanPush();
+    setAktif(false);
+    setOverride(null);
+    toast({ type: "info", title: "Notifikasi dimatikan untuk perangkat ini" });
   }
 
   if (state === "tidak_didukung")
@@ -86,17 +97,20 @@ export function NotifButton() {
         <BellOff className="size-4" aria-hidden /> Browser ini belum mendukung notifikasi.
       </p>
     );
-  if (state === "granted")
-    return (
-      <p className="flex items-center gap-2 text-sm font-bold text-primary">
-        <BellRing className="size-4" aria-hidden /> Notifikasi aktif untuk perangkat ini
-      </p>
-    );
   if (state === "denied")
     return (
       <p className="flex items-center gap-2 text-sm font-semibold text-danger">
         <BellOff className="size-4" aria-hidden /> Izin ditolak. Ubah lewat pengaturan situs browser.
       </p>
+    );
+  if (aktif && state === "granted")
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="flex items-center gap-2 text-sm font-bold text-primary">
+          <BellRing className="size-4" aria-hidden /> Notifikasi aktif di perangkat ini
+        </p>
+        <Button variant="soft" size="sm" onClick={matikan}>Matikan</Button>
+      </div>
     );
   return (
     <Button icon={BellRing} size="sm" loading={state === "meminta"} disabled={state === "memuat"} onClick={aktifkan}>

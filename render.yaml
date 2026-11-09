@@ -1,0 +1,20 @@
+# Blueprint Render untuk worker notifikasi (aplikasi webnya di Vercel).
+# Background Worker di Render berbayar; alternatif yang lebih murah: Railway (lihat README).
+services:
+  - type: worker
+    name: phelya-notification-worker
+    runtime: docker
+    rootDir: worker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:admin@phelya.id
