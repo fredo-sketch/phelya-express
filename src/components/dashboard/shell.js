@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import Logo from "@/components/ui/logo";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import Mascot from "@/components/ui/mascot";
+import NotifBell from "@/components/notifikasi/bell";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, inisial } from "@/lib/format";
 
@@ -107,10 +108,7 @@ export default function DashboardShell({ nav, user, roleLabel, children, bottomN
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
           <div className="min-w-0 flex-1">{topAction}</div>
-          <button aria-label="Notifikasi" className="relative inline-flex size-10 items-center justify-center rounded-full hover:bg-soft">
-            <Bell className="size-5" />
-            <span className="absolute right-2 top-2 size-2.5 rounded-full bg-accent ring-2 ring-bg" aria-hidden />
-          </button>
+          <NotifBell />
           <div className="flex items-center gap-2.5 rounded-full border border-line bg-surface py-1 pl-1 pr-3">
             <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white dark:text-[#1c1310]">{inisial(user.nama || "?")}</span>
             <span className="hidden text-left leading-tight sm:block">

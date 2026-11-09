@@ -26,8 +26,9 @@ Kirim, lacak, antar, dan kelola paket dalam satu platform dengan tarif transpara
 9. [Sistem notifikasi](#sistem-notifikasi)
 10. [Struktur folder](#struktur-folder)
 11. [Menjalankan proyek](#menjalankan-proyek)
-12. [Akun uji](#akun-uji)
-13. [Roadmap](#roadmap)
+12. [Deploy](#deploy)
+13. [Akun uji](#akun-uji)
+14. [Roadmap](#roadmap)
 
 ---
 
@@ -38,9 +39,9 @@ Kirim, lacak, antar, dan kelola paket dalam satu platform dengan tarif transpara
 | Frontend (UI semua halaman, light/dark mode) | Selesai | Semua halaman memakai data nyata dari Supabase |
 | Database Supabase (skema, constraint, RLS, Storage, fungsi bisnis, seed) | Selesai | Ada di `supabase/`, sudah diuji |
 | Menyambungkan frontend ke Supabase (Auth + API) | Selesai | Login sungguhan, rute dilindungi per peran, semua data lewat `/api/*` |
-| Notifikasi (lonceng in-app + Web Push + worker) | Belum | Tabel dan antreannya sudah siap di database |
-| Label resi PDF dengan QR | Belum | |
-| Deploy online (Vercel + worker) | Belum | |
+| Notifikasi (lonceng in-app + Web Push + worker) | Selesai | Lonceng di tiga dashboard, push via service worker, worker di `worker/` |
+| Label resi PDF dengan QR | Selesai | `GET /api/orders/[resi]/label`, ukuran 100 × 150 mm |
+| Deploy online (Vercel + worker) | Siap di-deploy | Konfigurasi dan panduan ada di bagian Deploy. Akun Vercel dan Railway/Render tetap harus dibuat sendiri |
 
 > Browser hanya berbicara dengan Supabase Auth untuk masuk dan keluar. Semua data dibaca dan ditulis lewat Route Handlers `/api/*` yang memakai sesi pengguna, sehingga RLS tetap berlaku. Aturan bisnis (ongkir, nomor resi, transisi status, hak akses) tetap dijalankan di database; server hanya memetakan galat ke pesan yang ramah.
 
@@ -281,7 +282,10 @@ flowchart LR
 
 - **Anti-ganda:** kombinasi `(subscription_id, dedup_key)` unik, jadi kejadian yang sama tidak mengirim dua kali.
 - **Aman untuk banyak worker:** `SKIP LOCKED` mencegah dua worker mengambil job yang sama. Job yang terkunci lebih dari 5 menit (worker mati) diambil ulang.
-- **Rencana tampilan:** ikon lonceng dengan badge belum dibaca di header ketiga dashboard, dropdown inbox, dan toggle "Notifikasi push" di halaman profil. Pelacak tamu tetap mengaktifkan push dari halaman lacak resi.
+- **Tampilan:** ikon lonceng dengan badge belum dibaca di header ketiga dashboard (data diperbarui tiap 30 detik saat tab terlihat), panel inbox dengan "tandai semua dibaca", dan tombol aktifkan push di dalam panel serta halaman profil. Pelacak tamu mengaktifkan push untuk satu paket dari halaman lacak resi, tanpa akun.
+- **Pendaftaran langganan:** RPC `daftar_push` memvalidasi endpoint HTTPS dan kunci. Satu perangkat hanya punya satu langganan: login dengan akun lain di perangkat yang sama memindahkan langganan ke akun itu, dan langganan tamu tidak pernah menimpa langganan akun.
+- **Worker** (`worker/`): memanggil `claim_notification_jobs` tiap 5 detik, mengirim lewat `web-push`, lalu melapor ke `complete_notification_job` atau `fail_notification_job`. Status 404/410 menonaktifkan langganan, galat lain dicoba ulang dengan backoff. Satu-satunya komponen yang memegang `service_role` key.
+- **Mengapa tanpa Redis:** antrean sudah berada di Postgres (pola outbox), jadi pembuatan job ikut transaksi bisnis dan tidak butuh layanan antrean terpisah. Redis baru berguna bila volume sudah sangat besar.
 
 ## Struktur folder
 
@@ -303,9 +307,10 @@ phelya-express/
 │  │  ├─ tracking/           peta, linimasa, form resi
 │  │  ├─ career/             daftar lowongan dan form lamaran
 │  │  ├─ sections/ layout/ auth/
+│  │  ├─ notifikasi/         lonceng dan panel inbox
 │  │  ├─ order-store.js      store klien: memuat /api/bootstrap, aksi tulis lewat /api/*
 │  │  └─ session-guard.js    mengakhiri sesi bila "Ingat saya" tidak dicentang
-│  ├─ app/api/               Route Handlers: bootstrap, me, orders, tarif, zona, pelanggan, lamaran, lowongan
+│  ├─ app/api/               Route Handlers: bootstrap, me, orders (+ status, kurir, bayar, bukti, label), tarif, zona, pelanggan, lamaran, lowongan, notifikasi, push
 │  ├─ proxy.js               menyegarkan sesi dan melindungi /dashboard, /kurir, /admin per peran
 │  ├─ lib/
 │  │  ├─ status.js           aturan status (cermin dari database)
@@ -313,11 +318,16 @@ phelya-express/
 │  │  ├─ supabase/           client browser dan server (sesi cookie, client anon)
 │  │  ├─ api/                guard (peran, galat) dan pemeta data ke bentuk UI
 │  │  ├─ lacak.js            pelacakan publik via RPC lacak_resi
+│  │  ├─ push.js             berlangganan Web Push di browser
+│  │  ├─ label-pdf.js        pembuat label resi PDF + QR (pdf-lib, qrcode)
 │  │  ├─ route.js            jalur peta dummy
 │  │  └─ format.js           format rupiah dan tanggal
 │  └─ data/akun-uji.js       akun uji untuk tombol "Isi otomatis" di halaman masuk
+├─ worker/                   worker Web Push (Node, Dockerfile, uji unit)
+├─ public/sw.js              service worker penerima push
+├─ render.yaml               blueprint Render untuk worker
 └─ supabase/
-   ├─ migrations/            001 skema, 002 fungsi dan trigger, 003 RLS dan Storage, 004 pemisahan policy admin, 005 integrasi frontend (HP saat daftar, penyamaran data pelacakan, lamaran tanpa service_role)
+   ├─ migrations/            001 skema, 002 fungsi dan trigger, 003 RLS dan Storage, 004 pemisahan policy admin, 005 integrasi frontend (HP saat daftar, penyamaran data pelacakan, lamaran tanpa service_role), 006 pendaftaran Web Push
    └─ seed.sql               data dummy dan akun uji
 ```
 
@@ -334,7 +344,7 @@ npm run build
 
 **Database (project Supabase baru)**
 
-1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 005), lewat SQL Editor atau `supabase db push`.
+1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 006), lewat SQL Editor atau `supabase db push`.
 2. Jalankan `supabase/seed.sql` untuk data dummy dan akun uji.
 3. Nonaktifkan registrasi yang tidak perlu dan aktifkan **Leaked Password Protection** di Authentication.
 
@@ -344,8 +354,47 @@ npm run build
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | browser, server | |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser, server | kunci publik (aman di browser, dibatasi RLS) |
-| `SUPABASE_SERVICE_ROLE_KEY` | hanya worker notifikasi nanti | **Rahasia.** Aplikasi web tidak memerlukannya. Jangan masukkan ke browser atau repo |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push (tahap berikutnya) | dibuat dengan `npx web-push generate-vapid-keys` |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | hanya worker notifikasi | **Rahasia.** Aplikasi web tidak memerlukannya. Jangan masukkan ke browser atau repo |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | browser | kunci publik VAPID, dibuat dengan `npx web-push generate-vapid-keys` |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | worker saja | kunci privat jangan masuk repo atau Vercel |
+
+## Deploy
+
+Ada dua bagian yang di-deploy terpisah: aplikasi web di **Vercel**, worker notifikasi di **Railway** atau **Render**. Worker tidak bisa di Vercel karena harus berjalan terus-menerus.
+
+**1. Siapkan kunci VAPID (sekali saja)**
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Simpan hasilnya: kunci publik dipakai di Vercel dan worker, kunci privat hanya di worker.
+
+**2. Aplikasi web di Vercel**
+
+1. Import repo GitHub, Framework Preset: Next.js (root direktori `/`).
+2. Environment Variables (Production, Preview, Development):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+3. Deploy. Variabel `NEXT_PUBLIC_*` ikut dimasukkan saat build, jadi redeploy setiap kali nilainya diubah.
+4. Di Supabase **Authentication > URL Configuration**: isi Site URL dengan domain Vercel dan tambahkan `https://domain-kamu.vercel.app/**` ke Redirect URLs.
+
+**3. Worker di Railway (disarankan, paling murah)**
+
+1. New Project > Deploy from GitHub repo, lalu atur **Root Directory** ke `worker`. Railway membaca `worker/railway.json` dan `Dockerfile`.
+2. Isi variabel: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (contoh `mailto:emailkamu@gmail.com`).
+3. Lihat log: harus muncul `[worker] mulai. interval 5000ms, batch 20`.
+
+Alternatif Render: gunakan `render.yaml` (Blueprint) dan isi variabel yang sama. Background Worker di Render berbayar, dan layanan gratisnya tidur saat tidak ada trafik sehingga tidak cocok untuk worker.
+
+**4. Uji notifikasi setelah deploy**
+
+1. Buka situs, masuk sebagai pelanggan, klik lonceng, lalu **Aktifkan Notifikasi** dan izinkan.
+2. Masuk sebagai admin di jendela lain, tugaskan kurir ke pesanan pelanggan itu.
+3. Dalam beberapa detik muncul notifikasi sistem di perangkat pelanggan, dan lonceng menampilkan badge baru. Di Supabase, `notification_jobs` berstatus `sent`.
+
+Catatan: push butuh HTTPS (otomatis di Vercel) dan di iPhone hanya berfungsi bila situs ditambahkan ke Layar Utama.
 
 ## Akun uji
 
@@ -367,9 +416,9 @@ Resi contoh: `PEX2610310001` (dalam perjalanan), `PEX2610309887` (sampai), `PEX2
 - [x] Database: skema, constraint, trigger status, RLS, Storage privat, fungsi bisnis, seed, pengujian
 - [x] Sambungkan frontend ke Supabase: Auth, proteksi rute per peran, `order-store` memakai API server
 - [x] Unggah foto bukti dan CV ke Storage lewat server (cek tipe berkas asli dan ukuran maksimal 2 MB)
-- [ ] Notifikasi: lonceng in-app, Web Push, dan worker pengirim
-- [ ] Label resi PDF dengan QR
-- [ ] Deploy online (Vercel untuk aplikasi, Railway atau Render untuk worker)
+- [x] Notifikasi: lonceng in-app, Web Push, dan worker pengirim
+- [x] Label resi PDF dengan QR
+- [ ] Deploy online (Vercel untuk aplikasi, Railway atau Render untuk worker): konfigurasi siap, tinggal dijalankan di akunmu
 
 ---
 
