@@ -41,7 +41,7 @@ Kirim, lacak, antar, dan kelola paket dalam satu platform dengan tarif transpara
 | Menyambungkan frontend ke Supabase (Auth + API) | Selesai | Login sungguhan, rute dilindungi per peran, semua data lewat `/api/*` |
 | Notifikasi (lonceng in-app + Web Push + worker) | Selesai | Lonceng di tiga dashboard, push via service worker, worker di `worker/` |
 | Label resi PDF dengan QR | Selesai | `GET /api/orders/[resi]/label`, ukuran 100 × 150 mm |
-| Deploy online (Vercel + worker) | Selesai | Konfigurasi dan panduan ada di bagian Deploy. Akun Vercel dan Railway/Render tetap harus dibuat sendiri |
+| Deploy online (Vercel + worker) | Selesai | |
 
 > Browser hanya berbicara dengan Supabase Auth untuk masuk dan keluar. Semua data dibaca dan ditulis lewat Route Handlers `/api/*` yang memakai sesi pengguna, sehingga RLS tetap berlaku. Aturan bisnis (ongkir, nomor resi, transisi status, hak akses) tetap dijalankan di database; server hanya memetakan galat ke pesan yang ramah.
 
