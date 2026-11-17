@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/dashboard/pagination";
 import OrderDrawer from "@/components/dashboard/order-drawer";
 import { useOrders } from "@/components/order-store";
+import TambahOrderButton from "@/components/admin/tambah-order-button";
 import { LAYANAN, kotaById } from "@/lib/tariff";
 import { STATUS } from "@/lib/status";
 import { tanggalJam } from "@/lib/format";
@@ -55,6 +56,7 @@ export default function OrderTracking() {
   }
 
   const quick = [
+    ["menunggu_antar", `${orders.filter((o) => o.status === "menunggu_antar").length} Menunggu Diantar`],
     ["menunggu_kurir", `${orders.filter((o) => o.status === "menunggu_kurir").length} Menunggu Kurir`],
     ["dalam_perjalanan", `${orders.filter((o) => o.status === "dalam_perjalanan").length} Sedang Diantar`],
     ["gagal", `${orders.filter((o) => o.status === "gagal").length} Gagal Kirim`],
@@ -62,9 +64,12 @@ export default function OrderTracking() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-accent-deep">Operasional / Order Tracking</p>
-        <h1 className="text-3xl font-black">Monitoring & Tracking Pengiriman</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-accent-deep">Operasional / Order Tracking</p>
+          <h1 className="text-3xl font-black">Monitoring & Tracking Pengiriman</h1>
+        </div>
+        <TambahOrderButton />
       </div>
 
       <Card className="p-4 sm:p-5">

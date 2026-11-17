@@ -108,6 +108,9 @@ function Store({ pathname, children }) {
     form.append("file", file);
     return api(`/api/orders/${encodeURIComponent(resi)}/bukti`, { method: "POST", form });
   }, []);
+  const tambahOrderAdmin = useCallback((data) => aksi(api("/api/admin/order-baru", { method: "POST", body: data })), [aksi]);
+  const ubahOrder = useCallback((resi, data) => aksi(api(`/api/orders/${encodeURIComponent(resi)}`, { method: "PATCH", body: data })), [aksi]);
+  const hapusOrder = useCallback((resi) => aksi(api(`/api/orders/${encodeURIComponent(resi)}`, { method: "DELETE" })), [aksi]);
   const ubahProfil = useCallback((data) => aksi(api("/api/me", { method: "PATCH", body: data })), [aksi]);
 
   const value = useMemo(() => {
@@ -127,10 +130,13 @@ function Store({ pathname, children }) {
       assignKurir,
       konfirmasiBayar,
       tambahOrder,
+      tambahOrderAdmin,
+      ubahOrder,
+      hapusOrder,
       uploadBukti,
       ubahProfil,
     };
-  }, [state, muat, ubahStatus, batalkan, assignKurir, konfirmasiBayar, tambahOrder, uploadBukti, ubahProfil]);
+  }, [state, muat, ubahStatus, batalkan, assignKurir, konfirmasiBayar, tambahOrder, tambahOrderAdmin, ubahOrder, hapusOrder, uploadBukti, ubahProfil]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -25,3 +25,14 @@ export function supabaseAnon() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+
+/**
+ * Client dengan service_role: MELEWATI RLS. Hanya untuk route handler tepercaya yang tidak punya sesi pengguna
+ * (webhook Midtrans) dan hanya memanggil fungsi database yang di-GRANT khusus ke service_role.
+ * Kunci ini wajib berupa env server (tanpa awalan NEXT_PUBLIC_), jangan pernah dikirim ke browser.
+ */
+export function supabaseService() {
+  const kunci = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!kunci) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diisi di environment server.");
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, kunci, { auth: { persistSession: false, autoRefreshToken: false } });
+}

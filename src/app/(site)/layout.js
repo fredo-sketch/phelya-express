@@ -1,6 +1,6 @@
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
-import HelpFab from "@/components/layout/help-fab";
+import ChatWidget from "@/components/chat/chat-widget";
 
 export default function SiteLayout({ children }) {
   return (
@@ -14,7 +14,7 @@ export default function SiteLayout({ children }) {
       <Navbar />
       <main id="konten">{children}</main>
       <Footer />
-      <HelpFab />
+      <ChatWidget />
     </>
   );
 }

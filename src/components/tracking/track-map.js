@@ -62,7 +62,7 @@ export default function TrackMap({ asal, tujuan, status, height = 320 }) {
         <Marker position={B} icon={pin("#E57734", "📍")}>
           <Tooltip direction="top">Tujuan</Tooltip>
         </Marker>
-        {posisi && status !== "sampai" && status !== "dibatalkan" && status !== "menunggu_kurir" && (
+        {posisi && status !== "sampai" && status !== "dibatalkan" && status !== "menunggu_kurir" && status !== "menunggu_antar" && (
           <Marker position={posisi} icon={pin("#3E2922", "🚚")} zIndexOffset={800}>
             <Tooltip direction="top" permanent>
               Posisi paket

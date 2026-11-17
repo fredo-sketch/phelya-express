@@ -2,6 +2,7 @@
 // Dipisah dari UI supaya nanti bisa dipakai ulang juga oleh backend (route handler / Supabase function).
 
 export const STATUS = {
+  menunggu_antar: { label: "Menunggu Diantar ke Kantor", tone: "neutral", step: 0 },
   menunggu_kurir: { label: "Menunggu Kurir", tone: "neutral", step: 0 },
   diambil: { label: "Diambil Kurir", tone: "amber", step: 1 },
   dalam_perjalanan: { label: "Dalam Perjalanan", tone: "orange", step: 2 },
@@ -12,6 +13,7 @@ export const STATUS = {
 
 // Transisi yang diizinkan. Kurir hanya boleh maju satu langkah.
 export const TRANSISI = {
+  menunggu_antar: ["menunggu_kurir", "dibatalkan"],
   menunggu_kurir: ["diambil", "dibatalkan"],
   diambil: ["dalam_perjalanan", "gagal"],
   dalam_perjalanan: ["sampai", "gagal"],
@@ -26,7 +28,7 @@ export function bolehTransisi(dari, ke) {
 
 // Pembatalan hanya selama status masih awal.
 export function bisaDibatalkan(status) {
-  return status === "menunggu_kurir";
+  return status === "menunggu_kurir" || status === "menunggu_antar";
 }
 
 export const NEXT_ACTION = {
@@ -36,6 +38,11 @@ export const NEXT_ACTION = {
   gagal: { ke: "dalam_perjalanan", label: "Coba Antar Lagi" },
   sampai: null,
   dibatalkan: null,
+};
+
+export const SERAH = {
+  jemput: { label: "Dijemput kurir" },
+  antar_sendiri: { label: "Diantar sendiri ke kantor" },
 };
 
 export const BAYAR = {

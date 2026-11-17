@@ -41,3 +41,14 @@ export async function bacaJson(request) {
     return {};
   }
 }
+
+/** Peran pengguna saat ini bila ada sesi (tanpa menolak tamu). Dipakai endpoint publik yang hasilnya bergantung peran. */
+export async function peranOpsional() {
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { supabase, peran: null };
+  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  return { supabase, peran: data?.role ?? null };
+}

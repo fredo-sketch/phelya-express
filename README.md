@@ -182,6 +182,47 @@ ongkir      = round( tertagih × tarif_per_kg(zona) × pengali_layanan / 500 ) �
 
 Berat maksimal 100 kg per paket. Contoh: Semarang ke Jakarta, 2 kg, Reguler menghasilkan **Rp 30.000**. Perhitungan dilakukan oleh fungsi `hitung_ongkir` di database, dan tarif serta zona dapat diubah admin tanpa mengubah kode.
 
+## Revisi dosen (Nov 2026): packing, jemput, order kantor, CRUD admin, Midtrans, chatbot
+
+**Prinsip utama: harga tidak pernah datang dari browser.** Semua biaya dihitung oleh fungsi database `hitung_biaya` (ongkir + packing + jemput - diskon). Layar hanya menampilkan pratinjau; saat pesanan disimpan, server menghitung ulang dan menyimpan snapshot (`ongkir`, `packing_biaya`, `jemput_biaya`, `diskon`, `total`). Trigger `orders_guard` mengunci kolom-kolom itu setelah pesanan dibuat, dan constraint `orders_total_cek` memastikan `total = ongkir + packing + jemput - diskon`.
+
+| Fitur | Cara kerja |
+|---|---|
+| Packing tambahan | Tabel `packing_options` (Tidak, Bubble wrap, Kardus, Kayu) dikelola admin. Pilihan "Tidak" dilindungi trigger (tidak bisa dihapus/diberi harga). |
+| Jemput atau antar sendiri | Antar sendiri ke kantor: gratis, status awal `Menunggu Diantar ke Kantor`, admin menekan **Paket Sudah Diterima** sebelum kurir bisa ditugaskan. Jemput: khusus **membership**, berat minimal, maksimal N km dari kantor, biaya = dasar + per km x jarak (dibulatkan ke atas). Alamat jemput dan titik di peta wajib. Semua angka ada di tabel `pengaturan` (menu Admin > Pengaturan). |
+| Dua tipe pelanggan | **Membership** (punya akun, bisa dijemput, ada riwayat) dan **Umum** (`pelanggan_umum`, tanpa akun, diinput admin; tidak boleh dijemput, tidak dapat harga member). |
+| Tambah Order (admin) | Tombol di dashboard dan Order Tracking membuka pop-up. Member dicari lewat nama/HP/email, data terisi otomatis. Pembayaran: tunai (langsung lunas) atau Midtrans. Fungsi `buat_order_admin`. |
+| CRUD `/admin` | Pelanggan (membership + umum), Order (ubah kontak/isi/catatan, hapus hanya yang sudah dibatalkan), Packing, Layanan (ubah pengali, berat minimal, status), Pengaturan. Tiap menu: tabel, cari, Tambah, Edit, Hapus. Data yang sudah dipakai pesanan dinonaktifkan (soft delete), bukan dihapus, agar riwayat utuh. |
+| Midtrans (Sandbox) | Server membuat transaksi Snap dari `total` di database. Webhook `/api/midtrans/notification` memverifikasi signature SHA512, memeriksa nominal, lalu memanggil `midtrans_terapkan` (hanya `service_role`, idempotent, status lunas tidak bisa diturunkan). Tombol **Cek status** menjadi cadangan bila webhook terlambat. |
+| Chatbot "Phely" | Widget pop-up (tidak pindah halaman). Urutan jawaban: nomor resi -> FAQ aturan + data live -> Gemini (opsional) -> handoff WhatsApp. Tombol WhatsApp selalu tersedia. |
+| Navigasi | Navbar publik sadar sesi (Dashboard/Keluar saat sudah masuk) dan dashboard punya "Kembali ke Beranda". |
+
+### Variabel environment tambahan (Vercel)
+
+```
+MIDTRANS_SERVER_KEY=        # Sandbox, rahasia, hanya server
+MIDTRANS_CLIENT_KEY=        # Sandbox
+MIDTRANS_IS_PRODUCTION=false
+SUPABASE_SERVICE_ROLE_KEY=  # HANYA dipakai webhook Midtrans; jangan NEXT_PUBLIC_, jangan di-commit
+GEMINI_API_KEY=             # Google AI Studio (opsional; tanpa ini chatbot memakai FAQ + WhatsApp)
+GEMINI_MODEL=               # opsional, default gemini-3.5-flash-lite
+```
+
+### Mengaktifkan Midtrans Sandbox
+
+1. Daftar di Midtrans, pilih environment **Sandbox**, salin Server Key dan Client Key (Settings > Access Keys).
+2. Isi env di atas pada Vercel, lalu deploy ulang.
+3. Midtrans Dashboard > Settings > Configuration > **Payment Notification URL**: `https://<domain-vercel>/api/midtrans/notification`.
+4. Buat pesanan, tekan **Bayar dengan Midtrans**, selesaikan dengan simulator pembayaran Midtrans Sandbox. Status berubah menjadi Lunas lewat webhook (atau tekan **Cek status**).
+
+Webhook membutuhkan URL publik, jadi pengujiannya di Vercel, bukan `localhost`.
+
+### Migration baru
+
+`007` packing, jemput, pelanggan umum, pengaturan, `hitung_biaya`, `buat_order_admin` · `008` ubah/hapus order oleh admin · `009` pelindung packing "Tidak" · `010` fungsi Midtrans · `011` pemeriksaan nominal sebelum idempotensi.
+
+---
+
 ## Desain database
 
 ```mermaid
