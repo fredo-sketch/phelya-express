@@ -27,13 +27,15 @@ function tujuhHari(orders) {
   return { labels: hari.map((h) => h.label), order: hari.map((h) => jumlah[h.key]) };
 }
 
+import TambahOrderButton from "@/components/admin/tambah-order-button";
 export default function AdminDashboard() {
   const { orders } = useOrders();
   const periode = useMemo(() => tujuhHari(orders), [orders]);
   const hitung = (s) => orders.filter((o) => o.status === s).length;
-  const pendapatan = orders.filter((o) => o.bayar === "lunas").reduce((a, o) => a + o.ongkir, 0);
+  const pendapatan = orders.filter((o) => o.bayar === "lunas").reduce((a, o) => a + o.total, 0);
 
   const donut = [
+    { label: "Menunggu Diantar", value: hitung("menunggu_antar"), color: "#DDD5D6" },
     { label: "Menunggu Kurir", value: hitung("menunggu_kurir"), color: "#B6ACAD" },
     { label: "Diambil Kurir", value: hitung("diambil"), color: "#F6C0A6" },
     { label: "Dalam Perjalanan", value: hitung("dalam_perjalanan"), color: "#E57734" },
@@ -48,7 +50,10 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-black">Dashboard</h1>
           <p className="text-muted">Ringkasan operasional dari seluruh order.</p>
         </div>
-        <Button href="/admin/order" variant="secondary">Buka Order Tracking</Button>
+        <div className="flex flex-wrap gap-3">
+          <TambahOrderButton />
+          <Button href="/admin/order" variant="secondary">Buka Order Tracking</Button>
+        </div>
       </div>
 
       <section aria-label="Statistik" className="grid grid-cols-2 gap-4 lg:grid-cols-5">

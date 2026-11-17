@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
+import { Globe, LogOut, Menu, X } from "lucide-react";
 import Logo from "@/components/ui/logo";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import Mascot from "@/components/ui/mascot";
@@ -82,6 +82,9 @@ export default function DashboardShell({ nav, user, roleLabel, children, bottomN
         <div className="flex items-center justify-between px-3 py-2 text-sm font-bold">
           Tema tampilan <ThemeToggle />
         </div>
+        <Link href="/" onClick={() => setOpen(false)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-bold text-fg/80 hover:bg-soft">
+          <Globe className="size-5" aria-hidden /> Kembali ke Beranda
+        </Link>
         <button onClick={keluar} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-bold text-danger hover:bg-danger-soft">
           <LogOut className="size-5" aria-hidden /> Keluar
         </button>

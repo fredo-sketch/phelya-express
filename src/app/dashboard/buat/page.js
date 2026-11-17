@@ -1,19 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, ImagePlus, MapPin, PackageCheck, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ImagePlus, MapPin, PackageCheck, Store, Truck, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import Button from "@/components/ui/button";
 import MapPickerLoader from "@/components/tracking/map-picker-loader";
 import { useToast } from "@/components/ui/toast";
-import { useOrders } from "@/components/order-store";
+import { api, useOrders } from "@/components/order-store";
+import RincianBiaya from "@/components/ui/rincian-biaya";
 import { KOTA, LAYANAN, kotaById } from "@/lib/tariff";
 import { useOngkir } from "@/lib/use-ongkir";
 import { cn, rupiah } from "@/lib/format";
 
-const LANGKAH = ["Pengirim", "Penerima", "Detail Barang", "Layanan & Ongkir"];
+const LANGKAH = ["Pengirim", "Penerima", "Detail Barang", "Layanan & Biaya"];
 const HP_RE = /^(08|\+628)\d{8,11}$/;
 const MAKS_FOTO = 2 * 1024 * 1024;
 
@@ -30,12 +31,33 @@ export default function BuatPesanan() {
     pNama: me.nama, pHp: me.hp, pKota: "semarang", pAlamat: "", pPin: null,
     rNama: "", rHp: "", rKota: "jakarta", rAlamat: "", rPin: null,
     isi: "", berat: "1", catatan: "", layanan: "reguler",
+    packing: "tidak", metode: "antar_sendiri", jAlamat: "",
   });
+  const [packingList, setPackingList] = useState([]);
+  const [aturan, setAturan] = useState(null);
+  useEffect(() => {
+    let batal = false;
+    Promise.all([api("/api/packing"), api("/api/pengaturan")]).then(([p, a]) => {
+      if (batal) return;
+      if (p.ok) setPackingList(p.packing);
+      if (a.ok) setAturan(a.pengaturan);
+    });
+    return () => {
+      batal = true;
+    };
+  }, []);
   const [foto, setFoto] = useState(null); // { file, url }
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
 
   // Ongkir dihitung server (fungsi database yang sama dengan saat pesanan dibuat)
-  const { hasil: ongkir, semua: semuaOngkir } = useOngkir({ asal: f.pKota, tujuan: f.rKota, berat: f.berat, layanan: f.layanan });
+  const beratKg = Number(f.berat);
+  const jemputBolehBerat = !aturan || beratKg >= aturan.jemputMinBerat;
+  // Bila berat turun di bawah minimum, pilihan jemput otomatis kembali ke antar sendiri
+  const jemput = f.metode === "jemput" && jemputBolehBerat;
+  const { rincian: ongkir, semua: semuaOngkir } = useOngkir({
+    asal: f.pKota, tujuan: f.rKota, berat: f.berat, layanan: f.layanan, packing: f.packing, metode: jemput ? "jemput" : "antar_sendiri",
+    jemputLat: jemput && f.pPin ? f.pPin[0] : null, jemputLng: jemput && f.pPin ? f.pPin[1] : null,
+  });
 
   function validasi(s) {
     const n = {};
@@ -56,7 +78,13 @@ export default function BuatPesanan() {
       if (!kg || kg <= 0) n.berat = "Berat harus lebih dari 0 kg.";
       else if (kg > 100) n.berat = "Berat maksimal 100 kg.";
     }
-    if (s === 3 && !ongkir.ok) n.layanan = ongkir.error || "Tunggu perhitungan ongkir selesai.";
+    if (s === 3) {
+      if (jemput) {
+        if (f.jAlamat.trim().length < 10) n.jAlamat = "Alamat jemput minimal 10 karakter.";
+        if (!f.pPin) n.pPin = "Tandai titik jemput di peta.";
+      }
+      if (!ongkir.ok) n.layanan = ongkir.error || "Tunggu perhitungan biaya selesai.";
+    }
     return n;
   }
 
@@ -100,6 +128,8 @@ export default function BuatPesanan() {
       pNama: f.pNama, pHp: f.pHp, pKota: f.pKota, pAlamat: f.pAlamat,
       rNama: f.rNama, rHp: f.rHp, rKota: f.rKota, rAlamat: f.rAlamat,
       isi: f.isi, berat: Number(f.berat), catatan: f.catatan, layanan: f.layanan,
+      packing: f.packing, metode: jemput ? "jemput" : "antar_sendiri",
+      jemputAlamat: jemput ? f.jAlamat : undefined, jemputLat: jemput ? f.pPin?.[0] : undefined, jemputLng: jemput ? f.pPin?.[1] : undefined,
     });
     setLoading(false);
     if (!h.ok) {
@@ -140,12 +170,7 @@ export default function BuatPesanan() {
                 <Field label="Nomor HP" required error={err.pHp}>{(p) => <Input {...p} type="tel" inputMode="tel" value={f.pHp} invalid={!!err.pHp} onChange={set("pHp")} />}</Field>
                 <Field label="Kota asal" required>{(p) => <Select {...p} value={f.pKota} onChange={(e) => setF((x) => ({ ...x, pKota: e.target.value, pPin: null }))}>{kotaOpsi}</Select>}</Field>
               </div>
-              <Field label="Alamat lengkap penjemputan" required error={err.pAlamat}>{(p) => <Textarea {...p} value={f.pAlamat} invalid={!!err.pAlamat} onChange={set("pAlamat")} placeholder="Jalan, nomor, kelurahan, kecamatan" />}</Field>
-              <div>
-                <p className="mb-2 flex items-center gap-2 text-sm font-bold"><MapPin className="size-4 text-accent" aria-hidden />Pilih titik jemput di peta (opsional)</p>
-                <MapPickerLoader kotaId={f.pKota} value={f.pPin} onChange={(v) => setF((x) => ({ ...x, pPin: v }))} />
-                <p className="mt-2 text-xs text-muted">{f.pPin ? `Titik dipilih: ${f.pPin[0].toFixed(4)}, ${f.pPin[1].toFixed(4)}` : "Klik peta untuk menaruh pin."}</p>
-              </div>
+              <Field label="Alamat lengkap pengirim" required error={err.pAlamat}>{(p) => <Textarea {...p} value={f.pAlamat} invalid={!!err.pAlamat} onChange={set("pAlamat")} placeholder="Jalan, nomor, kelurahan, kecamatan" />}</Field>
             </div>
           )}
 
@@ -212,6 +237,62 @@ export default function BuatPesanan() {
                   );
                 })}
               </div>
+
+              <div>
+                <h3 className="mb-2 text-base font-black">Packing tambahan</h3>
+                <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Packing tambahan">
+                  {packingList.map((pk) => (
+                    <label key={pk.id} className={cn("flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3.5 transition", f.packing === pk.id ? "border-accent bg-accent-soft/40" : "border-line hover:border-primary")}>
+                      <input type="radio" name="packing" value={pk.id} checked={f.packing === pk.id} onChange={set("packing")} className="size-5 accent-[var(--accent)]" />
+                      <span className="flex-1">
+                        <span className="block font-extrabold">{pk.nama}</span>
+                        <span className="block text-xs text-muted">{pk.deskripsi}</span>
+                      </span>
+                      <span className="text-sm font-black">{pk.harga ? `+ ${rupiah(pk.harga)}` : "Gratis"}</span>
+                    </label>
+                  ))}
+                  {packingList.length === 0 && <p className="text-sm text-muted">Memuat pilihan packing...</p>}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-base font-black">Cara paket sampai ke Phelya</h3>
+                <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Cara serah paket">
+                  <label className={cn("flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition", !jemput ? "border-accent bg-accent-soft/40" : "border-line hover:border-primary")}>
+                    <input type="radio" name="metode" value="antar_sendiri" checked={!jemput} onChange={set("metode")} className="mt-1 size-5 accent-[var(--accent)]" />
+                    <span className="flex-1">
+                      <span className="flex items-center gap-2 font-extrabold"><Store className="size-4" aria-hidden />Antar sendiri ke kantor</span>
+                      <span className="block text-xs text-muted">{aturan ? `${aturan.kantorNama}, ${aturan.kantorAlamat}. ` : ""}Gratis.</span>
+                    </span>
+                  </label>
+                  <label className={cn("flex items-start gap-3 rounded-2xl border-2 p-3.5 transition", jemput ? "border-accent bg-accent-soft/40" : "border-line", jemputBolehBerat ? "cursor-pointer hover:border-primary" : "cursor-not-allowed opacity-60")}>
+                    <input type="radio" name="metode" value="jemput" checked={jemput} disabled={!jemputBolehBerat} onChange={set("metode")} className="mt-1 size-5 accent-[var(--accent)]" />
+                    <span className="flex-1">
+                      <span className="flex items-center gap-2 font-extrabold"><Truck className="size-4" aria-hidden />Dijemput kurir</span>
+                      <span className="block text-xs text-muted">
+                        {aturan
+                          ? jemputBolehBerat
+                            ? `Maks. ${aturan.jemputMaksKm} km dari kantor. ${rupiah(aturan.jemputBiayaDasar)} + ${rupiah(aturan.jemputBiayaPerKm)}/km.`
+                            : `Penjemputan minimal ${aturan.jemputMinBerat} kg.`
+                          : "Memuat aturan jemput..."}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {jemput && (
+                  <div className="mt-4 space-y-4 rounded-2xl border border-line bg-surface2 p-4">
+                    <Field label="Alamat jemput" required error={err.jAlamat}>{(p) => <Textarea {...p} value={f.jAlamat} invalid={!!err.jAlamat} onChange={set("jAlamat")} placeholder="Jalan, nomor, kelurahan, kecamatan" />}</Field>
+                    <div>
+                      <p className="mb-2 flex items-center gap-2 text-sm font-bold"><MapPin className="size-4 text-accent" aria-hidden />Tandai titik jemput di peta <span className="text-danger">*</span></p>
+                      <MapPickerLoader kotaId={f.pKota} value={f.pPin} onChange={(v) => setF((x) => ({ ...x, pPin: v }))} />
+                      <p className={cn("mt-2 text-xs", err.pPin ? "font-semibold text-danger" : "text-muted")} role={err.pPin ? "alert" : undefined}>
+                        {err.pPin ?? (f.pPin ? `Titik dipilih: ${f.pPin[0].toFixed(4)}, ${f.pPin[1].toFixed(4)}` : "Klik peta untuk menaruh pin. Biaya jemput dihitung dari jarak ke kantor.")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
               {err.layanan && <p role="alert" className="text-sm font-semibold text-danger">{err.layanan}</p>}
             </div>
           )}
@@ -228,11 +309,12 @@ export default function BuatPesanan() {
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <Card className="p-5 sm:p-6" aria-live="polite">
-            <h2 className="text-lg font-black">Ringkasan Ongkir</h2>
+            <h2 className="text-lg font-black">Ringkasan Biaya</h2>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted">Rute</dt><dd className="font-bold">{kotaById(f.pKota)?.nama} → {kotaById(f.rKota)?.nama}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Berat</dt><dd className="font-bold">{f.berat || 0} kg</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Layanan</dt><dd className="font-bold">{LAYANAN[f.layanan].nama}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted">Cara serah</dt><dd className="font-bold">{jemput ? "Dijemput kurir" : "Antar sendiri"}</dd></div>
               {ongkir.ok && (
                 <>
                   <div className="flex justify-between"><dt className="text-muted">Zona</dt><dd className="font-bold">{ongkir.zona.nama.split("·")[0].trim()}</dd></div>
@@ -241,9 +323,16 @@ export default function BuatPesanan() {
               )}
             </dl>
             <div className="mt-5 border-t border-line pt-4">
-              <p className="text-sm text-muted">Total ongkos kirim</p>
-              <p className="text-3xl font-black text-primary">{ongkir.ok ? rupiah(ongkir.ongkir) : "—"}</p>
-              {!ongkir.ok && <p className="mt-1 text-xs text-danger">{ongkir.error}</p>}
+              {ongkir.ok ? (
+                <RincianBiaya ongkir={ongkir.ongkir} packing={ongkir.packing} packingNama={packingList.find((x) => x.id === f.packing)?.nama} tampilJemput={jemput} jemput={ongkir.jemput.biaya} jemputKm={ongkir.jemput.jarakKm} diskon={ongkir.diskon} total={ongkir.total} />
+              ) : (
+                <>
+                  <p className="text-sm text-muted">Total biaya</p>
+                  <p className="text-3xl font-black text-primary">—</p>
+                  {ongkir.error && <p className="mt-1 text-xs text-danger">{ongkir.error}</p>}
+                </>
+              )}
+              <p className="mt-3 text-xs text-muted">Perkiraan biaya. Total resmi dihitung ulang oleh server saat pesanan dibuat.</p>
             </div>
           </Card>
         </aside>

@@ -68,7 +68,7 @@ export default function PesananSaya() {
             <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="bg-surface2 text-xs uppercase tracking-wider text-muted">
                 <tr>
-                  {["Resi", "Penerima", "Tujuan", "Layanan", "Berat", "Ongkir", "Status", "Tanggal", ""].map((h) => <th key={h} scope="col" className="px-4 py-3.5">{h}</th>)}
+                  {["Resi", "Penerima", "Tujuan", "Layanan", "Berat", "Total", "Status", "Tanggal", ""].map((h) => <th key={h} scope="col" className="px-4 py-3.5">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -79,7 +79,7 @@ export default function PesananSaya() {
                     <td className="px-4 py-4 text-muted">{kotaById(o.penerima.kota)?.nama}</td>
                     <td className="px-4 py-4">{LAYANAN[o.layanan].nama.replace("Phelya ", "")}</td>
                     <td className="px-4 py-4">{o.barang.berat} kg</td>
-                    <td className="px-4 py-4 font-bold">{rupiah(o.ongkir)}</td>
+                    <td className="px-4 py-4 font-bold">{rupiah(o.total)}</td>
                     <td className="px-4 py-4"><StatusBadge status={o.status} /></td>
                     <td className="px-4 py-4 text-muted">{tanggal(o.dibuat)}</td>
                     <td className="px-4 py-4"><Button href={`/dashboard/pesanan/${o.resi}`} size="sm" variant="secondary">Lihat Detail</Button></td>
@@ -101,7 +101,7 @@ export default function PesananSaya() {
                   <p className="mt-2 font-bold">{o.penerima.nama}</p>
                   <p className="text-sm text-muted">{kotaById(o.penerima.kota)?.nama} · {LAYANAN[o.layanan].nama.replace("Phelya ", "")} · {o.barang.berat} kg</p>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="font-extrabold">{rupiah(o.ongkir)}</span>
+                    <span className="font-extrabold">{rupiah(o.total)}</span>
                     <BayarBadge bayar={o.bayar} />
                   </div>
                   <Button href={`/dashboard/pesanan/${o.resi}`} size="sm" variant="secondary" className="mt-3 w-full">Lihat Detail</Button>

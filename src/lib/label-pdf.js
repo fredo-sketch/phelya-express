@@ -126,7 +126,7 @@ export async function buatLabelPdf({ o, asal, tujuan, layanan, urlLacak }) {
   const cod = o.bayar === "cod";
   const fy = 8 * MM;
   page.drawRectangle({ x: M, y: fy, width: W - 2 * M, height: 11 * MM, color: cod ? oranye : rgb(0.93, 0.92, 0.9) });
-  const label = cod ? `COD - TAGIH ${rupiah(o.ongkir)}` : o.bayar === "lunas" ? `LUNAS - ${rupiah(o.ongkir)}` : `ONGKIR ${rupiah(o.ongkir)} (${o.bayar})`;
+  const label = cod ? `COD - TAGIH ${rupiah(o.total ?? o.ongkir)}` : o.bayar === "lunas" ? `LUNAS - ${rupiah(o.total ?? o.ongkir)}` : `TOTAL ${rupiah(o.total ?? o.ongkir)} (${o.bayar})`;
   const ukL = bold.widthOfTextAtSize(aman(label), 10);
   teks(label, (W - ukL) / 2, fy + 4.2 * MM, { f: bold, s: 10, c: cod ? rgb(1, 1, 1) : hitam });
   return pdf.save();

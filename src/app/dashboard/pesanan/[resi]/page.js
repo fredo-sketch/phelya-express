@@ -13,8 +13,12 @@ import TrackMapLoader from "@/components/tracking/track-map-loader";
 import { CopyResi } from "@/components/tracking/resi-actions";
 import { useOrders } from "@/components/order-store";
 import { kotaById, LAYANAN } from "@/lib/tariff";
-import { bisaDibatalkan } from "@/lib/status";
+import { bisaDibatalkan, SERAH } from "@/lib/status";
+import RincianBiaya from "@/components/ui/rincian-biaya";
+import TombolBayar from "@/components/ui/tombol-bayar";
 import { rupiah, tanggalJam } from "@/lib/format";
+
+const PACKING_NAMA = { tidak: "Tidak", bubble_wrap: "Bubble wrap", kardus: "Kardus", kayu: "Kayu" };
 
 export default function DetailPesanan({ params }) {
   const { resi } = use(params);
@@ -61,6 +65,12 @@ export default function DetailPesanan({ params }) {
             <BayarBadge bayar={o.bayar} className="text-sm" />
           </div>
         </div>
+        {o.bayar === "menunggu" && o.status !== "dibatalkan" && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-accent-soft/50 p-4">
+            <p className="text-sm font-semibold">Total <b>{rupiah(o.total)}</b> belum dibayar. Bayar sekarang lewat QRIS, transfer bank, atau e-wallet.</p>
+            <TombolBayar resi={o.resi} size="sm" />
+          </div>
+        )}
         {bisaDibatalkan(o.status) && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-danger-soft p-4">
             <p className="text-sm font-semibold">Pesanan masih bisa dibatalkan selama belum diambil kurir.</p>
@@ -91,11 +101,13 @@ export default function DetailPesanan({ params }) {
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-6"><dt className="text-muted">{k}</dt><dd className="text-right font-bold">{v}</dd></div>
               ))}
-              <div className="flex items-center justify-between border-t border-line pt-3">
-                <dt className="flex items-center gap-2 font-bold"><Wallet className="size-4 text-primary" aria-hidden />Ongkos kirim</dt>
-                <dd className="text-lg font-black text-primary">{rupiah(o.ongkir)}</dd>
-              </div>
+              <div className="flex justify-between gap-6"><dt className="text-muted">Cara serah</dt><dd className="text-right font-bold">{SERAH[o.metodeSerah]?.label}</dd></div>
+              {o.metodeSerah === "jemput" && <div className="flex justify-between gap-6"><dt className="text-muted">Alamat jemput</dt><dd className="text-right font-bold">{o.jemputAlamat}</dd></div>}
             </dl>
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-bold"><Wallet className="size-4 text-primary" aria-hidden />Rincian biaya</p>
+              <RincianBiaya ongkir={o.ongkir} packing={o.packingBiaya} packingNama={PACKING_NAMA[o.packingId]} tampilJemput={o.metodeSerah === "jemput"} jemput={o.jemputBiaya} jemputKm={o.jemputJarakKm} diskon={o.diskon} total={o.total} />
+            </div>
           </Card>
           <Card className="p-5 sm:p-6">
             <h2 className="mb-4 flex items-center gap-2 text-lg font-black"><Package className="size-5 text-primary" aria-hidden />Peta Perjalanan</h2>

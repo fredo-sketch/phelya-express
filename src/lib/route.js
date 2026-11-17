@@ -54,6 +54,7 @@ export function jalurPeta(asalId, tujuanId) {
 }
 
 const PROGRES = {
+  menunggu_antar: 0,
   menunggu_kurir: 0,
   diambil: 0.06,
   dalam_perjalanan: 0.55,

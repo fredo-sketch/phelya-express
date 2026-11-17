@@ -28,7 +28,7 @@ export default function Pembayaran() {
     <div className="mx-auto max-w-7xl space-y-5">
       <div>
         <h1 className="text-3xl font-black">Pembayaran</h1>
-        <p className="text-muted">Pencatatan dan konfirmasi pembayaran oleh admin. Total lunas: <b className="text-primary">{rupiah(lunas.reduce((a, o) => a + o.ongkir, 0))}</b></p>
+        <p className="text-muted">Pencatatan dan konfirmasi pembayaran oleh admin. Total lunas: <b className="text-primary">{rupiah(lunas.reduce((a, o) => a + o.total, 0))}</b></p>
       </div>
       <Card className="overflow-x-auto">
         <div className="p-5 pb-2"><h2 className="text-lg font-black">Menunggu Konfirmasi ({tertunda.length})</h2></div>
@@ -42,7 +42,7 @@ export default function Pembayaran() {
                 <tr key={o.resi} className="border-t border-line">
                   <td className="px-5 py-3.5 font-mono font-bold text-primary">{o.resi}</td>
                   <td className="px-5 py-3.5 font-bold">{o.pengirim.nama}</td>
-                  <td className="px-5 py-3.5 font-extrabold">{rupiah(o.ongkir)}</td>
+                  <td className="px-5 py-3.5 font-extrabold">{rupiah(o.total)}</td>
                   <td className="px-5 py-3.5"><BayarBadge bayar={o.bayar} /></td>
                   <td className="px-5 py-3.5 text-muted">{tanggalJam(o.dibuat)}</td>
                   <td className="px-5 py-3.5"><Button size="sm" loading={busy === o.resi} onClick={() => konfirmasi(o)}>Konfirmasi</Button></td>
