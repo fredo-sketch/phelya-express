@@ -385,7 +385,7 @@ npm run build
 
 **Database (project Supabase baru)**
 
-1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 006), lewat SQL Editor atau `supabase db push`.
+1. Jalankan file di `supabase/migrations/` berurutan (001 sampai 011), lewat SQL Editor atau `supabase db push`.
 2. Jalankan `supabase/seed.sql` untuk data dummy dan akun uji.
 3. Nonaktifkan registrasi yang tidak perlu dan aktifkan **Leaked Password Protection** di Authentication.
 
